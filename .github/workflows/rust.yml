@@ -1,0 +1,20 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release-aarch64:
+
+    runs-on: macos-11
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cargo build --release
