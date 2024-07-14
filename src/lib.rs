@@ -351,21 +351,24 @@ pub fn check_captcha_or_other<'a>(stdout: &'a str, flags: &'a Vec<String>) -> bo
 }
 
 // 利用正则表达式从信息中提取验证码
-pub fn get_captchas(stdout: &str) -> Vec<String> {
-    // let re = Regex::new(r"\b[a-zA-Z0-9]{4,8}\b").unwrap(); // 只提取4-8位数字与字母组合
+pub fn get_captchas(stdout: &str, keywords: &Vec<String>) -> Vec<String> {
     let re = Regex::new(r"\b[a-zA-Z0-9][a-zA-Z0-9-]{2,6}[a-zA-Z0-9]\b").unwrap();
-    let stdout_str = stdout;
     let mut captcha_vec = Vec::new();
-    for m in re.find_iter(stdout_str) {
-        for i in m.as_str().chars() {
-            if i.is_ascii_digit() {
-                captcha_vec.push(m.as_str().to_string());
-                break;
+    for m in re.find_iter(stdout) {
+        let captcha = m.as_str();
+        let captcha_start_index = m.start();
+        // 检查验证码前面的文本中是否包含关键词
+        let pre_text = &stdout[..captcha_start_index];
+        for keyword in keywords {
+            if pre_text.contains(keyword) {
+                captcha_vec.push(captcha.to_string());
+                break; // 找到关键词后就不再检查其他关键词
             }
         }
     }
     captcha_vec
 }
+
 
 // 如果检测到 chat.db 有变动，则提取最近一分钟内最新的一条信息
 pub fn get_message_in_one_minute() -> String {
@@ -380,8 +383,7 @@ pub fn get_message_in_one_minute() -> String {
 
 // 如果信息中包含多个4-8位数字与字母组合（比如公司名称和验证码都是4-8位英文数字组合，例如CSDN）
 // 则选取数字字符个数最多的的那个字串作为验证码
-pub fn get_real_captcha(stdout: &str) -> String {
-    let captchas = get_captchas(stdout);
+pub fn get_real_captcha(captchas: Vec<String>) -> String {
     let mut real_captcha = String::new();
     let mut max_digit_count = 0;
     for captcha in captchas {
@@ -443,9 +445,9 @@ pub fn messages_thread() {
                 if captcha_or_other {
                     info!("{}", t!("new-verification-code-detected"));
 
-                    let captchas = get_captchas(&stdout);
+                    let captchas = get_captchas(&stdout, &flags);
                     info!("{}:{:?}", t!("all-possible-codes"), captchas);
-                    let real_captcha = get_real_captcha(&stdout);
+                    let real_captcha = get_real_captcha(captchas);
                     info!("{}:{:?}", t!("real-verification-code"), real_captcha);
                     let mut ctx = Clipboard::new().unwrap();
                     let old_clipboard_contents = get_old_clipboard_contents();
@@ -690,9 +692,9 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                                     check_captcha_or_other(&content, &read_config().flags);
                                 if is_captcha {
                                     info!("{}", t!("new-verification-email-detected"));
-                                    let captchas = get_captchas(&content);
+                                    let captchas = get_captchas(&content, &read_config().flags);
                                     info!("{}:{:?}", t!("all-possible-codes"), captchas);
-                                    let real_captcha = get_real_captcha(&content);
+                                    let real_captcha = get_real_captcha(captchas);
                                     info!("{}:{:?}", t!("real-verification-code"), real_captcha);
                                     let mut clpb = Clipboard::new().unwrap();
 

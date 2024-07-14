@@ -55,67 +55,90 @@ fn test_check_captcha_or_other() {
 #[test]
 fn test_get_captchas() {
     let stdout = "【自如网】自如验证码 356407, 请及时致电4001001111".to_string();
-    let captchas = get_captchas(&stdout);
+    let flags = vec![
+        "验证码".to_string(),
+        "动态密码".to_string(),
+        "verification".to_string(),
+        "code".to_string(),
+        "인증".to_string(),
+        "代码".to_string(),
+    ];    
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["356407".to_string()]);
 
     let stdout =
         "【百度账号】验证码：534571 。验证码提供他人可能导致百度账号被盗，请勿转发或泄漏。"
             .to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["534571".to_string()]);
 
     let stdout = "【AIdea】您的验证码为：282443，请勿泄露于他人！".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["282443".to_string()]);
 
     let stdout = "【必胜客】116352（动态验证码），请在30分钟内填写".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["116352".to_string()]);
 
     let stdout =
         "This output contains a captcha with non-alphanumeric characters: ABCD123".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["ABCD123".to_string()]);
 
     let stdout = "[s1mple] your code is 123456".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["s1mple".to_string(), "123456".to_string()]);
 
     let stdout = "您的验证码是12345，请勿泄露给他人。".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["12345".to_string()]);
 
     let stdout = "您正在使用境外网上支付验证服务，动态密码为729729。动态密码连续输错3次，您的此次交易验证会失败。请勿向他人泄露！[中国工商银行]。【工商银行】".to_string();
-    let captchas = get_captchas(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
     assert_eq!(captchas, vec!["729729".to_string()]);
 }
 
 #[test]
 fn test_get_real_captcha() {
+    let flags = vec![
+        "验证码".to_string(),
+        "动态密码".to_string(),
+        "verification".to_string(),
+        "code".to_string(),
+        "인증".to_string(),
+        "代码".to_string(),
+    ];    
+
     let stdout = String::from("【Microsoft】将123456用作Microsoft账户安全代码");
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "123456");
 
     let stdout = String::from("【APPLE】Apple ID代码为：724818。请勿与他人共享。");
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "724818");
 
     let stdout = String::from("【自如网】自如验证码 356407，有效时间为一分钟，请勿将验证码告知任何人！如非您本人操作，请及时致电4001001111");
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "356407");
 
     let stdout = String::from(
         "【腾讯云】验证码：134560，5分钟内有效，为了保障您的账户安全，请勿向他人泄漏验证码信息",
     );
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "134560");
 
     let stdout = String::from("Your confirmation code is below 一 enter it in your open browser window and we'll help you get signed in RKJ-YP6 If you didn't request this email, there's nothing to worry about - you can safely ignore it.");
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "RKJ-YP6");
 
     let stdout = String::from("If this was you, your verification code is: 047289 If you didn't request i： click here to deny.");
-    let result = get_real_captcha(&stdout);
+    let captchas = get_captchas(&stdout, &flags);
+    let result = get_real_captcha(captchas);
     assert_eq!(result, "047289");
 }
 
