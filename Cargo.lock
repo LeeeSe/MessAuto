@@ -3503,7 +3503,6 @@ dependencies = [
  "sys-locale",
  "tao",
  "tray-icon",
- "winit",
 ]
 
 [[package]]
