@@ -1,14 +1,14 @@
 use std::{fs::File, thread::sleep, time::Duration};
 
 use arboard::Clipboard;
-use i_slint_backend_winit::winit::platform::macos::WindowBuilderExtMacOS;
+use i_slint_backend_winit::winit::platform::macos::WindowAttributesExtMacOS;
 use log::{error, info};
 use mouse_position::mouse_position::Mouse;
 use rust_i18n::t;
 use simplelog::{
     ColorChoice, CombinedLogger, ConfigBuilder, LevelFilter, TermLogger, TerminalMode, WriteLogger,
 };
-use MessAuto::{
+use mess_auto::{
     get_old_clipboard_contents, get_sys_locale, log_path, paste_script, read_config,
     recover_clipboard_contents, return_script,
 };
@@ -46,13 +46,11 @@ pub fn main(code: &str, from_app: &str) -> Result<(), slint::PlatformError> {
     );
 
     let mut backend = i_slint_backend_winit::Backend::new().unwrap();
-    backend.window_builder_hook = Some(Box::new(|builder| {
-        builder
+    backend.window_attributes_hook = Some(Box::new(|attributes| attributes
             .with_titlebar_buttons_hidden(true)
             .with_titlebar_transparent(true)
-            .with_title_hidden(true)
-    }));
-    slint::platform::set_platform(Box::new(backend)).unwrap();
+            .with_title_hidden(true)));
+    let _ = slint::platform::set_platform(Box::new(backend));
 
     let ui = AppWindow::new()?;
 
