@@ -42,6 +42,7 @@ pub fn get_sys_locale() -> &'static str {
     match lang_code {
         "zh" => "zh-CN",
         "en" => "en",
+        "de" => "de",
         _ => "en",
     }
 }
