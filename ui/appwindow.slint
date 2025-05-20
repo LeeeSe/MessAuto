@@ -1,4 +1,4 @@
-import { Button, VerticalBox, Palette } from "std-widgets.slint";
+import { Button, VerticalBox, StyleMetrics } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
     in property <string> paste_code_instruction;
@@ -16,7 +16,7 @@ export component AppWindow inherits Window {
         width: 100%;
         height: 100%;
         border-radius: 9px;
-        background: Palette.background;
+        background: StyleMetrics.dark-color-scheme ? black : white;
         // 插入 TouchArea 用于实现拖动功能
         TouchArea {
             // 使用 moved 事件更新窗口位置

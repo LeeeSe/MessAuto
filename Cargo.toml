@@ -1,5 +1,5 @@
 [package]
-name = "mess_auto"
+name = "MessAuto"
 version = "0.8.5"
 edition = "2021"
 description = "Automatic extraction of Email and SMS verification code for Mac platform."
@@ -9,7 +9,7 @@ description = "Automatic extraction of Email and SMS verification code for Mac p
 [dependencies]
 sys-locale = "0.3.1"
 tray-icon = "0.14.1"
-tao = "0.33.0"
+tao = "0.28.0"
 rust-i18n = "3.0.1"
 serde_json = "1.0.107"
 serde = "1.0.188"
@@ -24,25 +24,25 @@ notify = "6.1.1"
 futures = "0.3.28"
 emlx = "0.1.0"
 mail-parser = "0.9.1"
-slint = "=1.11.0"
+slint = { git = "https://github.com/LeeeSe/slint.git", tag = "v1.5.2" }
 image = "0.25.0"
-i-slint-backend-winit = "=1.11.0"
+i-slint-backend-winit = { git = "https://github.com/LeeeSe/slint.git", tag = "v1.5.2" }
 mouse_position = "0.1.3"
 async-std = "1.12.0"
 arboard = "3.3.2"
 osakit = "0.2.3"
-winit = "0.30.10"
+
 
 [build-dependencies]
-slint-build = "=1.11.0"
+slint-build = "1.5.1"
 
 [package.metadata.i18n]
-available-locales = ["en", "zh-CN", "de"]
+available-locales = ["en", "zh-CN"]
 default-locale = "en"
 load-path = "locales"
 
 [package.metadata.bundle]
-name = "mess_auto"
+name = "MessAuto"
 identifier = "com.doe.messauto"
 icon = ["assets/images/icon_256.png"]
 copyright = "Copyright (c) LeeeSe 2022. All rights reserved."
