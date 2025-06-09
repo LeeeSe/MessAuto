@@ -28,11 +28,11 @@ use osakit::{Language, Script};
 use regex_lite::Regex;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use tray_icon::{
     menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu},
     TrayIconBuilder,
 };
-
 pub const ARGS_APP: &str = "app";
 rust_i18n::i18n!("locales");
 pub fn get_sys_locale() -> &'static str {
@@ -61,9 +61,19 @@ pub struct MAConfig {
     #[serde(default)]
     pub listening_to_mail: bool,
     #[serde(default)]
+    pub max_email_length: usize,
+    #[serde(default)]
     pub float_window: bool,
     #[serde(default)]
     pub recover_clipboard: bool,
+    #[serde(default)]
+    pub use_ai: bool,
+    #[serde(default)]
+    pub ai_model: String,
+    #[serde(default)]
+    pub ai_api_key: String,
+    #[serde(default)]
+    pub ai_api_url: String,
 }
 
 fn default_flags() -> Vec<String> {
@@ -87,8 +97,13 @@ impl Default for MAConfig {
             launch_at_login: false,
             flags: default_flags(),
             listening_to_mail: false,
+            max_email_length: 500,
             float_window: false,
             recover_clipboard: false,
+            use_ai: false,
+            ai_model: "".to_string(),
+            ai_api_key: "".to_string(),
+            ai_api_url: "".to_string(),
         }
     }
 }
@@ -349,6 +364,27 @@ pub fn check_captcha_or_other<'a>(stdout: &'a str, flags: &'a Vec<String>) -> bo
     }
     false
 }
+// 利用 AI 从信息中提取验证码
+pub fn get_captchas_with_ai(stdout: &str) -> Vec<String> {
+    let config = read_config();
+    let mut captcha_vec = Vec::new();
+    let url = format!("{}/v1/chat/completions", config.ai_api_url);
+    let body = json!({
+        "model": config.ai_model,
+        "messages": [
+            {
+                "role": "user",
+                "content": format!("从以下信息中提取验证码，不要输出任何额外信息: {}", stdout)
+            }
+        ]
+    });
+    let response = reqwest::blocking::Client::new().post(url).json(&body).send().unwrap();
+    let response_body = response.json::<serde_json::Value>().unwrap();
+    let content = response_body["choices"][0]["message"]["content"].as_str().unwrap();
+    captcha_vec.push(content.to_string());
+    captcha_vec
+}
+   
 
 // 利用正则表达式从信息中提取验证码
 pub fn get_captchas(stdout: &str) -> Vec<String> {
@@ -381,7 +417,7 @@ pub fn get_message_in_one_minute() -> String {
 // 如果信息中包含多个4-8位数字与字母组合（比如公司名称和验证码都是4-8位英文数字组合，例如CSDN）
 // 则选取数字字符个数最多的的那个字串作为验证码
 pub fn get_real_captcha(stdout: &str) -> String {
-    let captchas = get_captchas(stdout);
+    let captchas = get_captchas_with_ai(stdout);
     let mut real_captcha = String::new();
     let mut max_digit_count = 0;
     for captcha in captchas {
@@ -431,7 +467,8 @@ pub fn return_script() -> Result<(), Box<dyn Error>> {
 
 pub fn messages_thread() {
     thread::spawn(move || {
-        let flags = read_config().flags;
+        let config = read_config();
+        let flags = config.flags;
         let check_db_path = home_dir().unwrap().join("Library/Messages/chat.db-wal");
         let mut last_metadata_modified = fs::metadata(&check_db_path).unwrap().modified().unwrap();
         loop {
@@ -442,8 +479,10 @@ pub fn messages_thread() {
                 let captcha_or_other = check_captcha_or_other(&stdout, &flags);
                 if captcha_or_other {
                     info!("{}", t!("new-verification-code-detected"));
-
-                    let captchas = get_captchas(&stdout);
+                    let captchas = match config.use_ai {
+                        true => get_captchas_with_ai(&stdout),
+                        false => get_captchas(&stdout),
+                    };
                     info!("{}:{:?}", t!("all-possible-codes"), captchas);
                     let real_captcha = get_real_captcha(&stdout);
                     info!("{}:{:?}", t!("real-verification-code"), real_captcha);
@@ -681,16 +720,19 @@ async fn async_watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
                             let path = path.replace(".tmp", "");
                             let content = read_emlx(&path);
                             info!("len: {}", content.len());
-
+                            let config = read_config();
+                            let flags = config.flags;
                             // Protect user privacy
                             // info!("{}", t!("email-content"));
 
-                            if content.len() < 500 {
-                                let is_captcha =
-                                    check_captcha_or_other(&content, &read_config().flags);
+                            if content.len() < config.max_email_length {
+                                let is_captcha = check_captcha_or_other(&content, &flags);
                                 if is_captcha {
                                     info!("{}", t!("new-verification-email-detected"));
-                                    let captchas = get_captchas(&content);
+                                    let captchas = match config.use_ai {
+                                        true => get_captchas_with_ai(&content),
+                                        false => get_captchas(&content),
+                                    };
                                     info!("{}:{:?}", t!("all-possible-codes"), captchas);
                                     let real_captcha = get_real_captcha(&content);
                                     info!("{}:{:?}", t!("real-verification-code"), real_captcha);

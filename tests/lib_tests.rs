@@ -1,8 +1,8 @@
 use home::home_dir;
 
 use MessAuto::{
-    check_captcha_or_other, check_for_updates, config_path, get_captchas, get_real_captcha,
-    get_sys_locale,
+    check_captcha_or_other, check_for_updates, config_path, get_captchas, get_captchas_with_ai,
+    get_real_captcha, get_sys_locale,
 };
 
 #[test]
@@ -128,3 +128,16 @@ fn test_get_real_captcha() {
 //     println!("error:{:?}", need_update);
 //     assert_eq!(need_update.is_ok(), true);
 // }
+
+#[test]
+fn test_get_captchas_with_ai() {
+    let stdout = "Sign in to Tron4u
+Hi! This is your one-time-password for signing in:
+
+97B4AB
+
+Or you can click on this link to sign in"
+        .to_string();
+    let captchas = get_captchas_with_ai(&stdout);
+    assert_eq!(captchas, vec!["97B4AB".to_string()]);
+}
