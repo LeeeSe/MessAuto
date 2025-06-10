@@ -2,7 +2,6 @@ use std::fs::File;
 use std::process::Command;
 
 use log::{info, trace, warn};
-use native_dialog::MessageDialog;
 use rust_i18n::t;
 use simplelog::{
     ColorChoice, CombinedLogger, ConfigBuilder, LevelFilter, TermLogger, TerminalMode, WriteLogger,
@@ -14,7 +13,7 @@ use tao::{
 };
 use tray_icon::{menu::MenuEvent, TrayIconEvent};
 
-use MessAuto::{
+use mess_auto::{
     auto_launch, check_accessibility, check_accessibility_with_no_action, check_full_disk_access,
     config_path, get_sys_locale, log_path, mail_thread, messages_thread, read_config, TrayIcon,
     TrayMenu, TrayMenuItems,
