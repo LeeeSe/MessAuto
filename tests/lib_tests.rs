@@ -8,7 +8,7 @@ use MessAuto::{
 #[test]
 fn test_get_sys_locale() {
     let locale = get_sys_locale();
-    assert!(locale == "zh-CN" || locale == "en");
+    assert!(locale == "zh-CN" || locale == "en" || locale == "de");
 }
 
 #[test]

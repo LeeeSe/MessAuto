@@ -1,0 +1,66 @@
+auto-paste: Automatisches Einfügen
+auto-return: Automatischer Zeilenumbruch
+launch-at-login: Beim Anmelden starten
+full-disk-access: Die Kernfunktionen von MessAuto erfordern vollen Festplattenzugriff
+hide-icon: Symbol ausblenden
+hide-icon-for-now: Jetzt ausblenden
+hide-icon-forever: Für immer ausblenden
+add-flag: Flag hinzufügen
+config: Konfiguration
+logs: Protokolle
+quit: Beenden
+unknown-arch: Unbekannte Architektur
+new-version: Neue Version
+new-version-text: Eine neue Version von MessAuto ist verfügbar. Möchten Sie sie herunterladen?
+update-failed: Update fehlgeschlagen
+update-success: Update erfolgreich
+update-success-text: Soll die App sofort neu gestartet werden?
+listening-to-mail: E-Mails überwachen
+float-window: Schwebendes Fenster
+imessage: iMessage
+mail: Mail
+paste_code_instruction: "1. Klicken Sie auf das Code-Eingabefeld.\n2. Klicken Sie auf die Schaltfläche unten."
+verification-code: Bestätigungscode
+from-label: von
+log-initialization-completed: Protokollinitialisierung abgeschlossen
+detect-and-set-app-language-to: App-Sprache erkennen und einstellen auf
+successfully-obtained-disk-access-permissions: Festplattenzugriffsberechtigungen erfolgreich erhalten
+latest-version-number: Neueste Versionsnummer
+current-version-number: Aktuelle Versionsnummer
+version-up-to-date: Anwendung ist auf dem neuesten Stand
+new-verification-code-detected: Neuer Bestätigungscode erkannt
+all-possible-codes: Alle möglichen Codes sind
+real-verification-code: Echter Bestätigungscode
+paste-verification-code: Bestätigungscode einfügen
+press-enter: Eingabetaste drücken
+new-version-download-success: Download der neuen Version erfolgreich
+detected-new-version: Neue Version erkannt
+unzip-operation: Entpacken
+replace-binary-file: Binärdatei ersetzen
+new-email-received: Neue E-Mail erhalten
+email-content: E-Mail-Inhalt
+new-verification-email-detected: Neue Bestätigungs-E-Mail erkannt
+binary-file-replace-success: Binärdatei erfolgreich ersetzt
+enable-auto-paste: Automatisches Einfügen aktivieren
+enable-auto-return: Automatischer Zeilenumbruch aktivieren
+disable-auto-paste: Automatisches Einfügen deaktivieren
+disable-auto-return: Automatischer Zeilenumbruch deaktivieren
+set-launch-at-login: Beim Anmelden starten aktivieren
+disable-launch-at-login: Beim Anmelden starten deaktivieren
+mail-listening-enabled: Überwachen von E-Mails aktiviert
+mail-listening-disabled: Überwachen von E-Mails deaktiviert
+float-window-enabled: Schwebendes Fenster aktiviert
+float-window-disabled: Schwebendes Fenster deaktiviert
+access-blocked-no-full-disk-access: 'Zugriff blockiert: Kein voller Festplattenzugriff'
+new-version-download-failed: Download der neuen Version fehlgeschlagen
+update-check-failed-ensure-network-access: 'Update-Prüfung fehlgeschlagen: Stellen Sie sicher, dass das Netzwerk auf Github und die zugehörigen APIs zugreifen kann'
+binary-file-replace-failed: Binärdatei ersetzen fehlgeschlagen
+unknown-operation: Unbekannte Operation
+unsupported-platform: Nicht unterstützte Plattform
+error-when-open-authorization-window: Fehler beim Öffnen des Autorisierungsfensters
+popup-authorization-window: Autorisierungsfenster aufklappen
+recover-clipboard: Zwischenablage wiederherstellen
+recover-clipboard-disabled: Zwischenablage belegen
+recover-clipboard-enabled: Zwischenablage nicht mehr belegen
+unable-to-recover-clipboard: Die Zwischenablage kann nicht wiederhergestellt werden. Die Zwischenablage ist möglicherweise leer.
+old-clpb-contents: Aktuellen Inhalt der Zwischenablage speichern
