@@ -4,6 +4,7 @@ export component AppWindow inherits Window {
     in property <string> paste_code_instruction;
     in property <string> verification_code_label;
     callback paste-code();
+    callback close-window();
     callback mouse_move(length, length);
     always-on-top: true;
     // no-frame: true;
@@ -11,7 +12,7 @@ export component AppWindow inherits Window {
     min-width: 100px;
     min-height: 110px;
     default-font-size: 13px;
-    
+
     Rectangle {
         width: 100%;
         height: 100%;
@@ -35,6 +36,13 @@ export component AppWindow inherits Window {
                     text: verification_code_label;
                     clicked => {
                         paste-code();
+                    }
+                }
+                Button {
+                    vertical-stretch: 2;
+                    text: "Close";
+                    clicked => {
+                        close_window();
                     }
                 }
             }

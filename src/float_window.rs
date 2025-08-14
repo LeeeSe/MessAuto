@@ -67,6 +67,13 @@ pub fn main(code: &str, from_app: &str) -> Result<(), slint::PlatformError> {
         ));
     });
 
+    // 添加关闭窗口回调的处理
+    let ui_weak_close = ui.as_weak();
+    ui.on_close_window(move || {
+        let ui = ui_weak_close.unwrap();
+        ui.hide().unwrap();
+    });
+
     ui.set_paste_code_instruction(paste_code_instruction.to_string().into());
     ui.set_verification_code_label(verification_code_label.to_string().into());
 
