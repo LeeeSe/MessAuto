@@ -1,0 +1,17 @@
+[package]
+name = "messauto"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ctrlc = "3.4.5"
+eframe = "0.32.0"
+image = "0.25.5"
+notify = "6.1.1"
+regex = "1.11.1"
+tokio = { version = "1.44.1", features = ["full"] }
+tray-icon = "0.21.1"
+winit = "0.30.12"
+log = "0.4.20"
+env_logger = "0.10.1"
+emlx = "0.1.0"
