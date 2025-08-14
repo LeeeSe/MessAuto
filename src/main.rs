@@ -1,3 +1,5 @@
+mod clipboard;
+mod config;
 mod floating_window;
 mod ipc;
 mod monitor;
@@ -13,9 +15,20 @@ use std::time::Duration;
 use tokio::runtime::Runtime;
 
 fn main() {
-    env_logger::builder()
-        .filter_level(log::LevelFilter::Info)
-        .init();
+    // 初始化日志系统
+    if let Err(e) = config::Config::init_logging() {
+        eprintln!("Failed to initialize logging: {}", e);
+        std::process::exit(1);
+    }
+
+    // 初始化配置系统
+    let app_config = match config::Config::load() {
+        Ok(config) => Arc::new(Mutex::new(config)),
+        Err(e) => {
+            log::error!("Failed to load configuration: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     if floating_window::maybe_start_floating_window() {
         return;
@@ -54,7 +67,7 @@ fn main() {
         });
 
         info!("初始化托盘图标...");
-        tray::run_tray_application(quit_requested, Some(monitor_callback));
+        tray::run_tray_application(quit_requested, app_config, Some(monitor_callback));
 
         {
             let quit = quit_requested_clone.lock().unwrap();
