@@ -18,3 +18,5 @@ emlx = "0.1.0"
 serde = { version = "1.0", features = ["derive"] }
 toml = "0.8"
 dirs = "5.0"
+enigo = "0.5.0"
+chrono = "0.4.41"

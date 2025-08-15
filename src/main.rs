@@ -6,7 +6,7 @@ mod monitor;
 mod parser;
 mod tray;
 
-use log::{debug, info};
+use log::info;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -15,10 +15,15 @@ use std::time::Duration;
 use tokio::runtime::Runtime;
 
 fn main() {
+    println!("=== Starting Messauto ===");
+
     // 初始化日志系统
     if let Err(e) = config::Config::init_logging() {
         eprintln!("Failed to initialize logging: {}", e);
-        std::process::exit(1);
+        // 继续运行，但使用标准输出日志
+        env_logger::Builder::from_default_env()
+            .filter_level(log::LevelFilter::Info)
+            .init();
     }
 
     // 初始化配置系统
@@ -67,6 +72,7 @@ fn main() {
         });
 
         info!("初始化托盘图标...");
+        info!("About to run tray application...");
         tray::run_tray_application(quit_requested, app_config, Some(monitor_callback));
 
         {

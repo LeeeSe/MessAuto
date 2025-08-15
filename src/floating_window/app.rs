@@ -1,7 +1,8 @@
 use eframe::{
-    egui::{self, vec2, Layout, RichText, Stroke},
+    egui::{self, vec2},
     App, NativeOptions,
 };
+use crate::clipboard::auto_paste;
 use std::time::{Duration, Instant};
 use winit::platform::macos::EventLoopBuilderExtMacOS;
 
@@ -154,7 +155,8 @@ impl VerificationCodeApp {
         );
 
         if btn_response.clicked() {
-            ctx.copy_text(self.code.clone());
+            // 使用 auto_paste 函数，设置 direct_input=true
+            let _ = auto_paste(true, &self.code);
         }
     }
 

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 pub struct Config {
     pub auto_copy: bool,
     pub auto_paste: bool,
-    pub restore_clipboard: bool,
+    pub direct_input: bool,
     pub launch_at_login: bool,
     pub listen_email: bool,
     pub floating_window: bool,
@@ -20,7 +20,7 @@ impl Default for Config {
         Self {
             auto_copy: false,
             auto_paste: false,
-            restore_clipboard: false,
+            direct_input: false,
             launch_at_login: false,
             listen_email: true,
             floating_window: true,
@@ -105,7 +105,7 @@ impl Config {
         Ok(Self {
             auto_copy: legacy.auto_copy.unwrap_or_default(),
             auto_paste: legacy.auto_paste.unwrap_or_default(),
-            restore_clipboard: legacy.restore_clipboard.unwrap_or_default(),
+            direct_input: legacy.restore_clipboard.unwrap_or_default(),
             launch_at_login: legacy.launch_at_login.unwrap_or_default(),
             listen_email: legacy.listen_email.unwrap_or(true),
             floating_window: legacy.floating_window.unwrap_or(true),
@@ -125,12 +125,19 @@ impl Config {
         env_logger::Builder::from_default_env()
             .filter_level(log::LevelFilter::Info)
             .target(env_logger::Target::Pipe(Box::new(
-                std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open(log_dir.join("app.log"))?,
+                std::io::stdout(),
             )))
             .init();
+        
+        // 写入文件副本
+        if let Ok(mut log_file) = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_dir.join("app.log"))
+        {
+            use std::io::Write;
+            let _ = writeln!(log_file, "Logging initialized at: {:?}", chrono::Utc::now());
+        }
         
         log::info!("Logging initialized");
         Ok(())

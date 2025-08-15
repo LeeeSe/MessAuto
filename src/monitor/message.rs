@@ -4,8 +4,10 @@ use std::env;
 use notify::{EventKind, RecursiveMode};
 use log::{info, error, debug, warn};
 
+use crate::config::Config;
 use crate::parser;
 use crate::ipc;
+use crate::clipboard;
 use super::watcher::FileProcessor;
 
 // 跟踪最后处理的消息ID
@@ -109,9 +111,41 @@ impl FileProcessor for MessageProcessor {
                 debug!("Processing message {}: {}", i, message);
                 if let Some(code) = parser::extract_verification_code(message) {
                     info!("Found verification code in message: {}", code);
-                    match ipc::spawn_floating_window(&code) {
-                        Ok(_) => debug!("Floating window spawned successfully"),
-                        Err(e) => error!("Failed to spawn floating window: {}", e),
+                    
+                    let config = Config::load().unwrap_or_default();
+                    
+                    // 如果悬浮窗启用，只显示悬浮窗，不自动输入
+                    if config.floating_window {
+                        match ipc::spawn_floating_window(&code) {
+                            Ok(_) => debug!("Floating window spawned successfully"),
+                            Err(e) => error!("Failed to spawn floating window: {}", e),
+                        }
+                    } else {
+                        // 悬浮窗关闭时，根据配置自动处理
+                        if config.direct_input {
+                            // 直接输入模式，不占用剪贴板
+                            if let Err(e) = clipboard::auto_paste(true, &code) {
+                                error!("Failed to direct input verification code: {}", e);
+                            } else {
+                                info!("Direct input verification code: {}", code);
+                            }
+                        } else if config.auto_copy {
+                            // 剪贴板模式
+                            if let Err(e) = clipboard::copy_to_clipboard(&code) {
+                                error!("Failed to copy verification code to clipboard: {}", e);
+                            } else {
+                                info!("Auto-copied verification code to clipboard: {}", code);
+                                
+                                // 如果 auto_paste 启用，自动粘贴
+                                if config.auto_paste {
+                                    if let Err(e) = clipboard::auto_paste(false, &code) {
+                                        error!("Failed to auto-paste verification code: {}", e);
+                                    } else {
+                                        info!("Auto-pasted verification code: {}", code);
+                                    }
+                                }
+                            }
+                        }
                     }
                 } else {
                     debug!("No verification code found in message");

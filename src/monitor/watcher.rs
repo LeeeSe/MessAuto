@@ -55,6 +55,21 @@ impl<P: FileProcessor> FileWatcher<P> {
         Ok(())
     }
 
+    pub fn stop(&mut self) {
+        if let Some(task) = self._watcher_task.take() {
+            task.abort();
+            debug!("File watcher task stopped");
+        }
+    }
+}
+
+impl<P: FileProcessor> Drop for FileWatcher<P> {
+    fn drop(&mut self) {
+        self.stop();
+    }
+}
+
+impl<P: FileProcessor> FileWatcher<P> {
     async fn watch_path(
         path: PathBuf,
         recursive_mode: RecursiveMode,
