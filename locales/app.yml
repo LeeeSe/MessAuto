@@ -127,6 +127,7 @@ config:
   failed_to_save_config:
     en: Failed to save config:%{error}
     zh-CN: 保存配置失败:%{error}
+
 monitor:
   mail_content:
     en: mail content%{content}
@@ -287,4 +288,3 @@ launch_manager:
   tray_hidden:
     en: Tray icon hidden
     zh-CN: 托盘图标已隐藏
-

@@ -134,13 +134,24 @@ impl TrayApplication {
             "{}",
             t!("tray.loading_icon_from", path = format!("{:?}", path))
         );
-        if !path.exists() {
-            return Err(format!("Icon file does not exist: {:?}", path).into());
-        }
-
+        
+        // Try to load from embedded resource first, fallback to file system
         let (icon_rgba, icon_width, icon_height) = {
             info!("{}", t!("tray.opening_image_file"));
-            let image = image::open(path)?.into_rgba8();
+            
+            // Try embedded icon first
+            let image = if path.ends_with("icon.png") {
+                // Use embedded icon data
+                let icon_data = include_bytes!("../resources/icon.png");
+                image::load_from_memory(icon_data)?.into_rgba8()
+            } else {
+                // Fallback to file system for other icons
+                if !path.exists() {
+                    return Err(format!("Icon file does not exist: {:?}", path).into());
+                }
+                image::open(path)?.into_rgba8()
+            };
+            
             let (width, height) = image.dimensions();
             info!(
                 "{}",
