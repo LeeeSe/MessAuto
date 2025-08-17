@@ -208,13 +208,15 @@ impl TrayApplication {
         menu.append(&items_ref.auto_enter)?;
         menu.append(&items_ref.direct_input)?;
         menu.append(&PredefinedMenuItem::separator())?;
-        menu.append(&items_ref.launch_at_login)?;
-        menu.append(&items_ref.listen_email)?;
         menu.append(&items_ref.listen_message)?;
+        menu.append(&items_ref.listen_email)?;
+        menu.append(&PredefinedMenuItem::separator())?;
+        menu.append(&items_ref.launch_at_login)?;
         menu.append(&items_ref.floating_window)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.config)?;
         menu.append(&items_ref.log)?;
+        menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.hide_tray)?;
         menu.append(&items_ref.exit)?;
 
