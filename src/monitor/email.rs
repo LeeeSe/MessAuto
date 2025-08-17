@@ -2,6 +2,7 @@ use email::MimeMessage;
 use log::warn;
 use log::{debug, error, info};
 use notify::{EventKind, RecursiveMode};
+use rust_i18n::t;
 use std::env;
 use std::fs;
 use std::io::Read;
@@ -12,6 +13,8 @@ use crate::clipboard;
 use crate::config::Config;
 use crate::ipc;
 use crate::parser;
+
+rust_i18n::i18n!("../locales");
 
 #[derive(Clone)]
 pub struct EmailProcessor;
@@ -37,21 +40,21 @@ impl EmailProcessor {
         // 解析邮件 body，处理可能的编码
         let body_content = match mime_message.decoded_body_string() {
             Ok(decoded) => {
-                info!("mail content:{}", &decoded);
+                info!("{}", t!("monitor.mail_content", content = &decoded));
                 decoded
             }
             Err(_) => {
                 // 如果解码失败，使用原始 body
-                warn!("parse body failed, mail content:{}", &mime_message.body);
+                warn!("{}", t!("monitor.parse_body_failed", content = &mime_message.body));
                 mime_message.body.clone()
             }
         };
 
         debug!(
-            "Email subject: {:?}",
-            mime_message.headers.get("Subject".to_string())
+            "{}",
+            t!("monitor.email_subject", subject = format!("{:?}", mime_message.headers.get("Subject".to_string())))
         );
-        debug!("Email body length: {} chars", body_content.len());
+        debug!("{}", t!("monitor.email_body_length", length = body_content.len()));
 
         Ok(body_content)
     }
@@ -84,15 +87,15 @@ impl FileProcessor for EmailProcessor {
             return Ok(());
         }
 
-        debug!("检测到新邮件被创建: {:?}", &path);
+        debug!("{}", t!("monitor.new_email_created", path = format!("{:?}", &path)));
 
         let content = self.read_emlx(Path::new(&path.to_string_lossy().replace(".tmp", "")))?;
 
-        debug!("邮件内容: {}", content);
+        debug!("{}", t!("monitor.email_content", content = content));
 
         if let Some(code) = parser::extract_verification_code(&content) {
-            info!("Found verification code in email: {}", code);
-            info!("mail content {}", &content);
+            info!("{}", t!("monitor.found_verification_code_email", code = code));
+            info!("{}", t!("monitor.mail_content", content = &content));
 
             let config = Config::load().unwrap_or_default();
 
@@ -107,39 +110,39 @@ impl FileProcessor for EmailProcessor {
                 if config.direct_input {
                     // 直接输入模式，不占用剪贴板
                     if let Err(e) = clipboard::auto_paste(true, &code) {
-                        error!("Failed to direct input verification code: {}", e);
+                        error!("{}", t!("monitor.failed_to_direct_input", error = e));
                     } else {
-                        info!("Direct input verification code: {}", code);
+                        info!("{}", t!("monitor.direct_input_verification_code", code = code));
 
                         // 如果 auto_enter 启用，在直接输入后立即按下回车键
                         if config.auto_enter {
                             if let Err(e) = clipboard::press_enter() {
-                                error!("Failed to press enter key: {}", e);
+                                error!("{}", t!("monitor.failed_to_press_enter", error = e));
                             } else {
-                                info!("Auto-pressed enter key");
+                                info!("{}", t!("monitor.auto_pressed_enter"));
                             }
                         }
                     }
                 } else {
                     // 剪贴板模式（默认行为）
                     if let Err(e) = clipboard::copy_to_clipboard(&code) {
-                        error!("Failed to copy verification code to clipboard: {}", e);
+                        error!("{}", t!("monitor.failed_to_copy_to_clipboard", error = e));
                     } else {
-                        info!("Auto-copied verification code to clipboard: {}", code);
+                        info!("{}", t!("monitor.auto_copied_to_clipboard", code = code));
 
                         // 如果 auto_paste 启用，自动粘贴
                         if config.auto_paste {
                             if let Err(e) = clipboard::auto_paste(false, &code) {
-                                error!("Failed to auto-paste verification code: {}", e);
+                                error!("{}", t!("monitor.failed_to_auto_paste", error = e));
                             } else {
-                                info!("Auto-pasted verification code: {}", code);
+                                info!("{}", t!("monitor.auto_pasted_verification_code", code = code));
 
                                 // 如果 auto_enter 启用，在自动粘贴后立即按下回车键
                                 if config.auto_enter {
                                     if let Err(e) = clipboard::press_enter() {
-                                        error!("Failed to press enter key: {}", e);
+                                        error!("{}", t!("monitor.failed_to_press_enter", error = e));
                                     } else {
-                                        info!("Auto-pressed enter key");
+                                        info!("{}", t!("monitor.auto_pressed_enter"));
                                     }
                                 }
                             }
@@ -147,9 +150,9 @@ impl FileProcessor for EmailProcessor {
                             // 如果 auto_paste 未启用但 auto_enter 启用，在复制后立即按下回车键
                             if config.auto_enter {
                                 if let Err(e) = clipboard::press_enter() {
-                                    error!("Failed to press enter key: {}", e);
+                                    error!("{}", t!("monitor.failed_to_press_enter", error = e));
                                 } else {
-                                    info!("Auto-pressed enter key");
+                                    info!("{}", t!("monitor.auto_pressed_enter"));
                                 }
                             }
                         }
@@ -157,7 +160,7 @@ impl FileProcessor for EmailProcessor {
                 }
             }
         } else {
-            debug!("No verification code found in email");
+            debug!("{}", t!("monitor.no_verification_code_email"));
         }
 
         Ok(())

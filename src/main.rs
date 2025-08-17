@@ -2,11 +2,13 @@ mod clipboard;
 mod config;
 mod floating_window;
 mod ipc;
+mod launch;
 mod monitor;
 mod parser;
 mod tray;
 
 use log::info;
+use rust_i18n::t;
 
 use std::env;
 use std::sync::{Arc, Mutex};
@@ -15,8 +17,11 @@ use std::thread::sleep;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 
+rust_i18n::i18n!("./locales");
+
 fn main() {
-    println!("=== Starting Messauto ===");
+    rust_i18n::set_locale("en");
+    println!("=== {} ===", t!("app.name"));
 
     if let Err(e) = config::Config::init_logging() {
         eprintln!("Failed to initialize logging: {}", e);
@@ -33,6 +38,13 @@ fn main() {
         }
     };
 
+    // Initialize launch manager and sync with config
+    if let Ok(launch_manager) = launch::LaunchManager::new() {
+        if let Err(e) = launch_manager.sync_with_config(&app_config.lock().unwrap()) {
+            log::error!("Failed to sync launch at login status: {}", e);
+        }
+    }
+
     if floating_window::maybe_start_floating_window() {
         return;
     }
@@ -41,31 +53,43 @@ fn main() {
 
     if test_mode {
         sleep(Duration::from_secs(2));
-        info!("启动测试验证码窗口...");
+        info!("{}", t!("monitor.starting_test_verification_window"));
         if let Ok(child) = ipc::spawn_floating_window("123456") {
-            info!("悬浮窗进程已启动: {:?}", child);
+            info!(
+                "{}",
+                t!(
+                    "monitor.floating_window_process_started",
+                    child = format!("{:?}", child)
+                )
+            );
 
             thread::sleep(Duration::from_secs(5));
 
             if let Ok(child2) = ipc::spawn_floating_window("654321") {
-                info!("第二个悬浮窗进程已启动: {:?}", child2);
+                info!(
+                    "{}",
+                    t!(
+                        "monitor.second_floating_window_process_started",
+                        child2 = format!("{:?}", child2)
+                    )
+                );
             }
 
             thread::sleep(Duration::from_secs(600));
         }
     } else {
-        info!("启动验证码提取器...");
+        info!("{}", t!("monitor.starting_verification_extractor"));
         let rt = Runtime::new().unwrap();
 
         let quit_requested = Arc::new(Mutex::new(false));
         let quit_requested_clone = quit_requested.clone();
 
         let monitor_callback = Box::new(move || {
-            info!("Tray application initialized. Monitoring actor is running.");
+            info!("{}", t!("actor.tray_application_initialized"));
         });
 
-        info!("初始化托盘图标...");
-        info!("About to run tray application...");
+        info!("{}", t!("tray.initializing_tray_icon"));
+        info!("{}", t!("tray.about_to_run_tray_application"));
 
         // --- 核心改动：启动Actor并获取Sender ---
         let _guard = rt.enter(); // 确保在正确的tokio上下文中
@@ -81,11 +105,11 @@ fn main() {
         {
             let quit = quit_requested_clone.lock().unwrap();
             if *quit {
-                info!("Shutting down application...");
+                info!("{}", t!("monitor.shutting_down_application"));
                 rt.shutdown_timeout(Duration::from_secs(2));
             }
         }
     }
 
-    info!("Application exited");
+    info!("{}", t!("monitor.application_exited"));
 }

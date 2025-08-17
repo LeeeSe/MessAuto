@@ -1,11 +1,13 @@
 use crate::config::Config;
+use crate::launch::LaunchManager;
 use crate::monitor::commands::MonitorCommand;
 use log::{info, trace};
+use rust_i18n::t;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::Sender;
-use tray_icon::menu::IconMenuItem;
+
 use tray_icon::{
     TrayIcon, TrayIconBuilder, TrayIconEvent,
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
@@ -61,36 +63,48 @@ impl TrayApplication {
     }
 
     fn new_tray_icon(&mut self) -> Result<TrayIcon, Box<dyn std::error::Error>> {
-        info!("Step 1: Creating tray menu...");
+        info!("{}", t!("tray.creating_tray_menu"));
         let menu = self.new_tray_menu()?;
-        info!("Step 1: Tray menu created successfully");
+        info!("{}", t!("tray.tray_menu_created"));
 
-        info!("Step 2: Finding icon path...");
+        info!("{}", t!("tray.finding_icon_path"));
         let icon_path =
             Self::find_icon_path().unwrap_or_else(|| PathBuf::from("resources").join("icon.png"));
-        info!("Step 2: Using icon path: {:?}", icon_path);
+        info!(
+            "{}",
+            t!(
+                "tray.using_icon_path",
+                icon_path = format!("{:?}", icon_path)
+            )
+        );
 
-        info!("Step 3: Loading icon...");
+        info!("{}", t!("tray.loading_icon"));
         let icon = Self::load_icon(&icon_path)?;
-        info!("Step 3: Icon loaded successfully");
+        info!("{}", t!("tray.icon_loaded"));
 
-        info!("Step 4: Building tray icon...");
+        info!("{}", t!("tray.building_tray_icon"));
         let tray_icon = TrayIconBuilder::new()
             .with_menu(Box::new(menu))
             .with_icon(icon)
             .with_icon_as_template(true)
             .with_tooltip("Messauto")
             .build()?;
-        info!("Step 4: Tray icon built successfully");
+        info!("{}", t!("tray.tray_icon_built"));
 
         Ok(tray_icon)
     }
 
     fn find_icon_path() -> Option<PathBuf> {
-        info!("Finding icon path...");
+        info!("{}", t!("tray.finding_icon_path"));
         let exe_path = env::current_exe().ok()?;
         let exe_dir = exe_path.parent()?;
-        info!("Executable directory: {:?}", exe_dir);
+        info!(
+            "{}",
+            t!(
+                "tray.executable_directory",
+                exe_dir = format!("{:?}", exe_dir)
+            )
+        );
 
         let possible_paths = [
             exe_dir.join("resources").join("icon.png"),
@@ -101,36 +115,45 @@ impl TrayApplication {
         ];
 
         for path in &possible_paths {
-            info!("尝试加载图标: {:?}", path);
+            info!("{}", t!("tray.try_load_icon", path = format!("{:?}", path)));
             if path.exists() {
-                info!("找到图标文件: {:?}", path);
+                info!(
+                    "{}",
+                    t!("tray.found_icon_file", path = format!("{:?}", path))
+                );
                 return Some(path.clone());
             }
         }
 
-        info!("未找到图标文件，将使用默认路径");
+        info!("{}", t!("tray.icon_file_not_found"));
         None
     }
 
     fn load_icon(path: &Path) -> Result<tray_icon::Icon, Box<dyn std::error::Error>> {
-        info!("Loading icon from: {:?}", path);
+        info!(
+            "{}",
+            t!("tray.loading_icon_from", path = format!("{:?}", path))
+        );
         if !path.exists() {
             return Err(format!("Icon file does not exist: {:?}", path).into());
         }
 
         let (icon_rgba, icon_width, icon_height) = {
-            info!("Opening image file...");
+            info!("{}", t!("tray.opening_image_file"));
             let image = image::open(path)?.into_rgba8();
             let (width, height) = image.dimensions();
-            info!("Image dimensions: {}x{}", width, height);
+            info!(
+                "{}",
+                t!("tray.image_dimensions", width = width, height = height)
+            );
             let rgba = image.into_raw();
-            info!("Image data length: {}", rgba.len());
+            info!("{}", t!("tray.image_data_length", length = rgba.len()));
             (rgba, width, height)
         };
 
-        info!("Creating tray icon from RGBA data...");
+        info!("{}", t!("tray.creating_tray_icon_from_rgba"));
         let icon = tray_icon::Icon::from_rgba(icon_rgba, icon_width, icon_height)?;
-        info!("Icon created successfully");
+        info!("{}", t!("tray.icon_created"));
 
         Ok(icon)
     }
@@ -142,32 +165,32 @@ impl TrayApplication {
 
         // 3. 直接创建 MenuItems 实例，让它拥有所有菜单项对象
         let menu_items = MenuItems {
-            auto_paste: CheckMenuItem::new("auto paste", true, config_guard.auto_paste, None),
-            auto_enter: CheckMenuItem::new("auto enter", true, config_guard.auto_enter, None),
-            direct_input: CheckMenuItem::new("direct input", true, config_guard.direct_input, None),
+            auto_paste: CheckMenuItem::new(&t!("menu.auto_paste"), true, config_guard.auto_paste, None),
+            auto_enter: CheckMenuItem::new(&t!("menu.auto_enter"), true, config_guard.auto_enter, None),
+            direct_input: CheckMenuItem::new(&t!("menu.direct_input"), true, config_guard.direct_input, None),
             launch_at_login: CheckMenuItem::new(
-                "launch at login",
+                &t!("menu.launch_at_login"),
                 true,
                 config_guard.launch_at_login,
                 None,
             ),
-            listen_email: CheckMenuItem::new("listen email", true, config_guard.listen_email, None),
+            listen_email: CheckMenuItem::new(&t!("menu.listen_email"), true, config_guard.listen_email, None),
             listen_message: CheckMenuItem::new(
-                "listen message",
+                &t!("menu.listen_message"),
                 true,
                 config_guard.listen_message,
                 None,
             ),
             floating_window: CheckMenuItem::new(
-                "floating window",
+                &t!("menu.floating_window"),
                 true,
                 config_guard.floating_window,
                 None,
             ),
-            config: MenuItem::new("config", true, None),
-            log: MenuItem::new("log", true, None),
-            hide_tray: MenuItem::new("hide tray", true, None),
-            exit: MenuItem::new("exit", true, None),
+            config: MenuItem::new(&t!("menu.config"), true, None),
+            log: MenuItem::new(&t!("menu.log"), true, None),
+            hide_tray: MenuItem::new(&t!("menu.hide_tray"), true, None),
+            exit: MenuItem::new(&t!("menu.exit"), true, None),
         };
 
         // 4. 将所有权转移给 self，这样它们的生命周期就和 TrayApplication 实例绑定了
@@ -238,14 +261,20 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
     ) {
         trace!("new_events called with cause: {:?}", cause);
         if winit::event::StartCause::Init == cause {
-            info!("Creating tray icon...");
+            info!("{}", t!("tray.creating_tray_icon"));
             match self.new_tray_icon() {
                 Ok(icon) => {
-                    info!("Tray icon created successfully");
+                    info!("{}", t!("tray.tray_icon_created"));
                     self.tray_icon = Some(icon);
                 }
                 Err(err) => {
-                    info!("Failed to create tray icon: {:?}", err);
+                    info!(
+                        "{}",
+                        t!(
+                            "tray.failed_to_create_tray_icon",
+                            err = format!("{:?}", err)
+                        )
+                    );
                     eprintln!("Failed to create tray icon: {:?}", err);
                 }
             }
@@ -269,28 +298,28 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                         config.auto_paste = !config.auto_paste;
                         menu_items.auto_paste.set_checked(config.auto_paste);
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
-                            "Auto paste {}",
+                            "{}",
                             if config.auto_paste {
-                                "enabled"
+                                t!("config.auto_paste_enabled")
                             } else {
-                                "disabled"
+                                t!("config.auto_paste_disabled")
                             }
                         );
                     } else if event.id == menu_items.auto_enter.id() {
                         config.auto_enter = !config.auto_enter;
                         menu_items.auto_enter.set_checked(config.auto_enter);
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
-                            "Auto enter {}",
+                            "{}",
                             if config.auto_enter {
-                                "enabled"
+                                t!("config.auto_enter_enabled")
                             } else {
-                                "disabled"
+                                t!("config.auto_enter_disabled")
                             }
                         );
                     } else if event.id == menu_items.direct_input.id() {
@@ -299,14 +328,14 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                             config.auto_paste = false;
                         }
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
-                            "Direct input {}",
+                            "{}",
                             if config.direct_input {
-                                "enabled"
+                                t!("config.direct_input_enabled")
                             } else {
-                                "disabled"
+                                t!("config.direct_input_disabled")
                             }
                         );
 
@@ -315,21 +344,28 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                     } else if event.id == menu_items.launch_at_login.id() {
                         config.launch_at_login = !config.launch_at_login;
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
-                            "Launch at login {}",
+                            "{}",
                             if config.launch_at_login {
-                                "enabled"
+                                t!("config.launch_at_login_enabled")
                             } else {
-                                "disabled"
+                                t!("config.launch_at_login_disabled")
                             }
                         );
+
+                        // Sync launch at login status with system
+                        if let Ok(launch_manager) = LaunchManager::new() {
+                            if let Err(e) = launch_manager.sync_with_config(&config) {
+                                log::error!("Failed to sync launch at login status: {}", e);
+                            }
+                        }
                     } else if event.id == menu_items.listen_email.id() {
                         config.listen_email = !config.listen_email;
                         menu_items.listen_email.set_checked(config.listen_email);
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
                             "Listen email {}",
@@ -357,7 +393,7 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                         config.listen_message = !config.listen_message;
                         menu_items.listen_message.set_checked(config.listen_message);
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
                             "Listen message {}",
@@ -393,7 +429,7 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                         }
 
                         if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
                         }
                         info!(
                             "Floating window {}",
@@ -441,7 +477,13 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                             log::warn!("Log file opening is only supported on macOS");
                         }
                     } else if event.id == menu_items.hide_tray.id() {
-                        println!("11");
+                        if let Some(ref mut tray_icon) = self.tray_icon {
+                            if let Err(e) = tray_icon.set_visible(false) {
+                                log::error!("{}", t!("tray.failed_to_hide_tray", error = e));
+                            } else {
+                                info!("{}", t!("tray.tray_hidden"));
+                            }
+                        }
                     } else if event.id == menu_items.exit.id() {
                         let mut quit = self.quit_requested.lock().unwrap();
                         *quit = true;

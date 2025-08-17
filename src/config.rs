@@ -1,3 +1,4 @@
+use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -65,7 +66,7 @@ impl Config {
         if !path.exists() {
             let config = Self::default();
             config.save()?;
-            log::info!("Created initial config file");
+            log::info!("{}", t!("logging.created_initial_config"));
             return Ok(config);
         }
 
@@ -79,7 +80,7 @@ impl Config {
                 Ok(config)
             }
             Err(_) => {
-                log::warn!("Migrating legacy config");
+                log::warn!("{}", t!("logging.migrating_legacy_config"));
                 let config = Self::migrate_legacy_config(&content)?;
                 config.save()?;
                 Ok(config)
@@ -166,7 +167,7 @@ impl Config {
             let _ = writeln!(log_file, "Logging initialized at: {:?}", chrono::Utc::now());
         }
 
-        log::info!("Logging initialized");
+        log::info!("{}", t!("logging.initialized"));
         Ok(())
     }
 }

@@ -7,6 +7,7 @@ pub mod watcher;
 use crate::config::Config;
 use actor::MonitorActor;
 use commands::MonitorCommand;
+use rust_i18n::t;
 use tokio::sync::mpsc;
 
 pub fn start_monitoring_actor() -> mpsc::Sender<MonitorCommand> {
@@ -21,7 +22,7 @@ pub fn start_monitoring_actor() -> mpsc::Sender<MonitorCommand> {
                 .send(MonitorCommand::StartMessageMonitoring)
                 .await
             {
-                log::error!("Failed to send initial start message command: {}", e);
+                log::error!("{}", t!("errors.failed_to_send_initial_start_message", error = e));
             }
         }
         if config.listen_email {
@@ -29,7 +30,7 @@ pub fn start_monitoring_actor() -> mpsc::Sender<MonitorCommand> {
                 .send(MonitorCommand::StartEmailMonitoring)
                 .await
             {
-                log::error!("Failed to send initial start email command: {}", e);
+                log::error!("{}", t!("errors.failed_to_send_initial_start_email", error = e));
             }
         }
 
