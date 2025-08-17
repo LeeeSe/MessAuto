@@ -30,3 +30,7 @@ before-packaging-command = "cargo build --release"
 product-name = "MessAuto"
 identifier = "com.leeese.messauto"
 icons = ["resources/icon_256.png"]
+
+[package.metadata.packager.macos]
+background-app = true
+signing-identity = "MessAuto_SC"
