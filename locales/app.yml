@@ -1,0 +1,290 @@
+_version: 2
+app:
+  name:
+    en: Messauto
+    zh-CN: Messauto
+  description:
+    en: macOS verification code extraction tool
+    zh-CN: macOS验证码提取工具
+
+logging:
+  initialized:
+    en: Logging initialized
+    zh-CN: 日志系统已初始化
+  created_initial_config:
+    en: Created initial config file
+    zh-CN: 创建了初始配置文件
+  migrating_legacy_config:
+    en: Migrating legacy config
+    zh-CN: 迁移旧版配置
+
+monitor:
+  starting_test_verification_window:
+    en: Starting test verification window...
+    zh-CN: 启动测试验证码窗口...
+  floating_window_process_started:
+    en: Floating window process started:%{child}
+    zh-CN: 悬浮窗进程已启动:%{child}
+  second_floating_window_process_started:
+    en: Second floating window process started:%{child2}
+    zh-CN: 第二个悬浮窗进程已启动:%{child2}
+  starting_verification_extractor:
+    en: Starting verification extractor...
+    zh-CN: 启动验证码提取器...
+  shutting_down_application:
+    en: Shutting down application...
+    zh-CN: 关闭应用程序...
+  application_exited:
+    en: Application exited
+    zh-CN: 应用程序已退出
+
+tray:
+  initializing_tray_icon:
+    en: Initializing tray icon...
+    zh-CN: 初始化托盘图标...
+  about_to_run_tray_application:
+    en: About to run tray application...
+    zh-CN: 即将运行托盘应用...
+  creating_tray_menu:
+    en: Step 1:Creating tray menu...
+    zh-CN: 步骤1:创建托盘菜单...
+  tray_menu_created:
+    en: Step 1:Tray menu created successfully
+    zh-CN: 步骤1:托盘菜单创建成功
+  finding_icon_path:
+    en: Step 2:Finding icon path...
+    zh-CN: 步骤2:查找图标路径...
+  using_icon_path:
+    en: Step 2:Using icon path:%{icon_path}
+    zh-CN: 步骤2:使用图标路径:%{icon_path}
+  loading_icon:
+    en: Step 3:Loading icon...
+    zh-CN: 步骤3:加载图标...
+  icon_loaded:
+    en: Step 3:Icon loaded successfully
+    zh-CN: 步骤3:图标加载成功
+  building_tray_icon:
+    en: Step 4:Building tray icon...
+    zh-CN: 步骤4:构建托盘图标...
+  tray_icon_built:
+    en: Step 4:Tray icon built successfully
+    zh-CN: 步骤4:托盘图标构建成功
+  tray_icon_created:
+    en: Tray icon created successfully
+    zh-CN: 托盘图标创建成功
+  failed_to_create_tray_icon: en:Failed to create tray icon:%{err}
+    zh-CN:创建托盘图标失败:%{err}
+  executable_directory:
+    en: Executable directory:%{exe_dir}
+    zh-CN: 可执行文件目录:%{exe_dir}
+  try_load_icon:
+    en: Try to load icon:%{path}
+    zh-CN: 尝试加载图标:%{path}
+  found_icon_file:
+    en: Found icon file:%{path}
+    zh-CN: 找到图标文件:%{path}
+  icon_file_not_found:
+    en: Icon file not found, will use default path
+    zh-CN: 未找到图标文件，将使用默认路径
+  loading_icon_from:
+    en: Loading icon from:%{path}
+    zh-CN: 从以下位置加载图标:%{path}
+  opening_image_file:
+    en: Opening image file...
+    zh-CN: 打开图像文件...
+  image_dimensions:
+    en: Image dimensions:%{width}x%{height}
+    zh-CN: 图像尺寸:%{width}x%{height}
+  image_data_length:
+    en: Image data length:%{length}
+    zh-CN: 图像数据长度:%{length}
+  creating_tray_icon_from_rgba:
+    en: Creating tray icon from RGBA data...
+    zh-CN: 从RGBA数据创建托盘图标...
+  icon_created:
+    en: Icon created successfully
+    zh-CN: 图标创建成功
+
+config:
+  auto_paste_enabled:
+    en: Auto paste enabled
+    zh-CN: 自动粘贴已启用
+  auto_paste_disabled:
+    en: Auto paste disabled
+    zh-CN: 自动粘贴已禁用
+  auto_enter_enabled:
+    en: Auto enter enabled
+    zh-CN: 自动回车已启用
+  auto_enter_disabled:
+    en: Auto enter disabled
+    zh-CN: 自动回车已禁用
+  direct_input_enabled:
+    en: Direct input enabled
+    zh-CN: 直接输入已启用
+  direct_input_disabled:
+    en: Direct input disabled
+    zh-CN: 直接输入已禁用
+  failed_to_save_config:
+    en: Failed to save config:%{error}
+    zh-CN: 保存配置失败:%{error}
+
+monitor:
+  mail_content:
+    en: mail content%{content}
+    zh-CN: 邮件内容:%{content}
+  parse_body_failed:
+    en: parse body failed, mail content%{content}
+    zh-CN: 解析正文失败，邮件内容:%{content}
+  email_subject:
+    en: Email subject:%{subject}
+    zh-CN: 邮件主题:%{subject}
+  email_body_length:
+    en: Email body length:%{length} chars
+    zh-CN: 邮件正文长度:%{length} 字符
+  new_email_created:
+    en: Detected new email created:%{path}
+    zh-CN: 检测到新邮件被创建:%{path}
+  found_verification_code_email:
+    en: Found verification code in email:%{code}
+    zh-CN: 在邮件中找到验证码:%{code}
+floating_window_spawned:
+    en: Floating window spawned successfully
+    zh-CN: 悬浮窗创建成功
+failed_to_spawn_floating_window:
+    en: Failed to spawn floating window:%{error}
+    zh-CN: 创建悬浮窗失败:%{error}
+failed_to_direct_input:
+    en: Failed to direct input verification code:%{error}
+    zh-CN: 直接输入验证码失败:%{error}
+direct_input_verification_code:
+    en: Direct input verification code:%{code}
+    zh-CN: 直接输入验证码:%{code}
+failed_to_press_enter:
+    en: Failed to press enter key:%{error}
+    zh-CN: 按下回车键失败:%{error}
+auto_pressed_enter:
+    en: Auto-pressed enter key
+    zh-CN: 自动按下回车键
+failed_to_copy_to_clipboard:
+    en: Failed to copy verification code to clipboard:%{error}
+    zh-CN: 复制验证码到剪贴板失败:%{error}
+auto_copied_to_clipboard:
+    en: Auto-copied verification code to clipboard:%{code}
+    zh-CN: 自动复制验证码到剪贴板:%{code}
+failed_to_auto_paste:
+    en: Failed to auto-paste verification code:%{error}
+    zh-CN: 自动粘贴验证码失败:%{error}
+auto_pasted_verification_code:
+    en: Auto-pasted verification code:%{code}
+    zh-CN: 自动粘贴验证码:%{code}
+no_verification_code_email:
+    en: No verification code found in email
+    zh-CN: 邮件中未找到验证码
+failed_to_press_enter_floating:
+    en: Failed to press enter key:%{error}
+    zh-CN: 按下回车键失败:%{error}
+auto_pressed_enter_floating:
+    en: Auto-pressed enter key after floating window input
+    zh-CN: 悬浮窗输入后自动按下回车键
+actor:
+  actor_running:
+    en: MonitorActor is running and waiting for commands.
+    zh-CN: 监听器正在运行并等待命令。
+  received_command:
+    en: MonitorActor received command:%{command}
+    zh-CN: 监听器收到命令:%{command}
+  message_monitoring_already_running:
+    en: Message monitoring is already running.
+    zh-CN: 消息监听已在运行。
+  starting_message_monitoring:
+    en: Starting message monitoring...
+    zh-CN: 启动消息监听...
+  failed_to_start_message_watcher:
+    en: Failed to start message watcher:%{error}
+    zh-CN: 启动消息监听器失败:%{error}
+  message_monitoring_started:
+    en: Message monitoring started successfully.
+    zh-CN: 消息监听启动成功。
+  stopping_message_monitoring:
+    en: Stopping message monitoring...
+    zh-CN: 停止消息监听...
+  message_monitoring_stopped:
+    en: Message monitoring stopped successfully.
+    zh-CN: 消息监听停止成功。
+  message_monitoring_not_running:
+    en: Message monitoring is not running, nothing to stop.
+    zh-CN: 消息监听未运行，无需停止。
+  email_monitoring_already_running:
+    en: Email monitoring is already running.
+    zh-CN: 邮件监听已在运行。
+  starting_email_monitoring:
+    en: Starting email monitoring...
+    zh-CN: 启动邮件监听...
+  failed_to_start_email_watcher:
+    en: Failed to start email watcher:%{error}
+    zh-CN: 启动邮件监听器失败:%{error}
+  email_monitoring_started:
+    en: Email monitoring started successfully.
+    zh-CN: 邮件监听启动成功。
+  stopping_email_monitoring:
+    en: Stopping email monitoring...
+    zh-CN: 停止邮件监听...
+  email_monitoring_stopped:
+    en: Email monitoring stopped successfully.
+    zh-CN: 邮件监听停止成功。
+  email_monitoring_not_running:
+    en: Email monitoring is not running, nothing to stop.
+    zh-CN: 邮件监听未运行，无需停止。
+  failed_to_send_initial_start_message:
+    en: Failed to send initial start message command:%{error}
+    zh-CN: 发送初始启动消息命令失败:%{error}
+  failed_to_send_initial_start_email:
+    en: Failed to send initial start email command:%{error}
+    zh-CN: 发送初始启动邮件命令失败:%{error}
+menu:
+  auto_paste:
+    en: Auto Paste
+    zh-CN: 自动粘贴
+  auto_enter:
+    en: Auto Enter
+    zh-CN: 自动回车
+  direct_input:
+    en: Direct Input
+    zh-CN: 直接输入
+  launch_at_login:
+    en: Launch at Login
+    zh-CN: 登录时启动
+  listen_email:
+    en: Listen Email
+    zh-CN: 监听邮件
+  listen_message:
+    en: Listen Message
+    zh-CN: 监听消息
+  floating_window:
+    en: Floating Window
+    zh-CN: 悬浮窗
+  config:
+    en: Config
+    zh-CN: 配置
+  log:
+    en: Log
+    zh-CN: 日志
+  hide_tray:
+    en: Hide Tray
+    zh-CN: 隐藏托盘
+  exit:
+    en: Exit
+    zh-CN: 退出
+launch_manager:
+  enabled_launch_at_login:
+    en: Launch at login enabled
+    zh-CN: 登录时启动已启用
+  disabled_launch_at_login:
+    en: Launch at login disabled
+    zh-CN: 登录时启动已禁用
+  failed_to_hide_tray:
+    en: Failed to hide tray icon:%{error}
+    zh-CN: 隐藏托盘图标失败:%{error}
+  tray_hidden:
+    en: Tray icon hidden
+    zh-CN: 托盘图标已隐藏
