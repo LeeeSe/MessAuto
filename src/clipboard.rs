@@ -84,3 +84,15 @@ fn paste_with_keyboard_shortcut() -> Result<(), String> {
 
     Ok(())
 }
+
+pub fn press_enter() -> Result<(), String> {
+    let mut enigo = Enigo::new(&Settings::default())
+        .map_err(|e| format!("Failed to create Enigo instance: {}", e))?;
+
+    // 模拟 Enter 键
+    enigo
+        .key(Key::Return, enigo::Direction::Click)
+        .map_err(|e| format!("Failed to press Enter key: {}", e))?;
+
+    Ok(())
+}

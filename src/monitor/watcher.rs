@@ -1,18 +1,23 @@
-use notify::{RecursiveMode, Event, EventKind, Config, RecommendedWatcher, Watcher};
+use log::{debug, error, info};
+use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::{Path, PathBuf};
-use log::{info, error, debug};
-use tokio::sync::mpsc::{channel, Receiver};
+use tokio::sync::mpsc::{Receiver, channel};
+use tokio::task::JoinHandle;
 
 pub trait FileProcessor: Clone + Send + Sync + 'static {
     fn get_watch_path(&self) -> PathBuf;
     fn get_file_pattern(&self) -> &str;
     fn get_recursive_mode(&self) -> RecursiveMode;
-    fn process_file(&self, path: &Path, event_kind: &EventKind) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    fn process_file(
+        &self,
+        path: &Path,
+        event_kind: &EventKind,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 }
 
 pub struct FileWatcher<P: FileProcessor> {
     processor: P,
-    _watcher_task: Option<tokio::task::JoinHandle<()>>,
+    watcher_task: Option<JoinHandle<()>>,
 }
 
 fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
@@ -32,7 +37,7 @@ impl<P: FileProcessor> FileWatcher<P> {
     pub fn new(processor: P) -> Self {
         Self {
             processor,
-            _watcher_task: None,
+            watcher_task: None,
         }
     }
 
@@ -50,22 +55,32 @@ impl<P: FileProcessor> FileWatcher<P> {
             }
         });
 
-        self._watcher_task = Some(task);
+        self.watcher_task = Some(task);
 
         Ok(())
     }
 
-    pub fn stop(&mut self) {
-        if let Some(task) = self._watcher_task.take() {
+    pub async fn stop(&mut self) {
+        if let Some(task) = self.watcher_task.take() {
+            debug!("Requesting to stop file watcher task...");
             task.abort();
-            debug!("File watcher task stopped");
+            match task.await {
+                Ok(_) => debug!("File watcher task stopped gracefully."),
+                Err(e) if e.is_cancelled() => {
+                    debug!("File watcher task was cancelled and has shut down.");
+                }
+                Err(e) => error!("Error waiting for file watcher task to stop: {:?}", e),
+            }
         }
     }
 }
 
 impl<P: FileProcessor> Drop for FileWatcher<P> {
     fn drop(&mut self) {
-        self.stop();
+        if let Some(task) = self.watcher_task.take() {
+            task.abort();
+            debug!("File watcher task aborted during drop");
+        }
     }
 }
 
@@ -74,7 +89,7 @@ impl<P: FileProcessor> FileWatcher<P> {
         path: PathBuf,
         recursive_mode: RecursiveMode,
         pattern: String,
-        processor: P
+        processor: P,
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let (mut watcher, mut rx) = async_watcher()?;
 

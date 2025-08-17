@@ -1,8 +1,11 @@
 use crate::config::Config;
+use crate::monitor::commands::MonitorCommand;
 use log::{info, trace};
 use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc::Sender;
+use tray_icon::menu::IconMenuItem;
 use tray_icon::{
     TrayIcon, TrayIconBuilder, TrayIconEvent,
     menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
@@ -21,16 +24,18 @@ pub struct TrayApplication {
     monitor_callback: Option<Box<dyn Fn() + Send>>,
     config: Arc<Mutex<Config>>,
     menu_items: Option<MenuItems>,
+    monitor_sender: Sender<MonitorCommand>,
 }
 
 // 保存菜单项引用
 #[derive(Clone)]
 struct MenuItems {
-    auto_copy: CheckMenuItem,
     auto_paste: CheckMenuItem,
+    auto_enter: CheckMenuItem,
     direct_input: CheckMenuItem,
     launch_at_login: CheckMenuItem,
     listen_email: CheckMenuItem,
+    listen_message: CheckMenuItem,
     floating_window: CheckMenuItem,
     config: MenuItem,
     log: MenuItem,
@@ -43,6 +48,7 @@ impl TrayApplication {
         quit_requested: Arc<Mutex<bool>>,
         config: Arc<Mutex<Config>>,
         monitor_callback: Option<Box<dyn Fn() + Send>>,
+        monitor_sender: Sender<MonitorCommand>,
     ) -> Self {
         Self {
             tray_icon: None,
@@ -50,6 +56,7 @@ impl TrayApplication {
             config,
             monitor_callback,
             menu_items: None,
+            monitor_sender,
         }
     }
 
@@ -135,8 +142,8 @@ impl TrayApplication {
 
         // 3. 直接创建 MenuItems 实例，让它拥有所有菜单项对象
         let menu_items = MenuItems {
-            auto_copy: CheckMenuItem::new("auto copy", true, config_guard.auto_copy, None),
             auto_paste: CheckMenuItem::new("auto paste", true, config_guard.auto_paste, None),
+            auto_enter: CheckMenuItem::new("auto enter", true, config_guard.auto_enter, None),
             direct_input: CheckMenuItem::new("direct input", true, config_guard.direct_input, None),
             launch_at_login: CheckMenuItem::new(
                 "launch at login",
@@ -145,6 +152,12 @@ impl TrayApplication {
                 None,
             ),
             listen_email: CheckMenuItem::new("listen email", true, config_guard.listen_email, None),
+            listen_message: CheckMenuItem::new(
+                "listen message",
+                true,
+                config_guard.listen_message,
+                None,
+            ),
             floating_window: CheckMenuItem::new(
                 "floating window",
                 true,
@@ -168,12 +181,13 @@ impl TrayApplication {
         self.apply_menu_logic(items_ref, &config_guard);
 
         // 使用 items_ref 中的引用来构建菜单
-        menu.append(&items_ref.auto_copy)?;
         menu.append(&items_ref.auto_paste)?;
+        menu.append(&items_ref.auto_enter)?;
         menu.append(&items_ref.direct_input)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.launch_at_login)?;
         menu.append(&items_ref.listen_email)?;
+        menu.append(&items_ref.listen_message)?;
         menu.append(&items_ref.floating_window)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.config)?;
@@ -190,23 +204,19 @@ impl TrayApplication {
             // 悬浮窗开启时强制启用直接输入，禁用剪贴板相关选项
             menu_items.direct_input.set_enabled(false);
             menu_items.direct_input.set_checked(true);
-            menu_items.auto_copy.set_enabled(false);
             menu_items.auto_paste.set_enabled(false);
-            menu_items.auto_copy.set_checked(false);
             menu_items.auto_paste.set_checked(false);
         } else if config.direct_input {
             // 直接输入开启时禁用剪贴板相关选项
-            menu_items.auto_copy.set_enabled(false);
             menu_items.auto_paste.set_enabled(false);
-            menu_items.auto_copy.set_checked(false);
             menu_items.auto_paste.set_checked(false);
             menu_items.direct_input.set_enabled(true);
         } else {
-            // 普通模式：所有选项可用
-            menu_items.auto_copy.set_enabled(true);
+            // 普通模式：auto_paste 和 direct_input 选项可用
             menu_items.auto_paste.set_enabled(true);
             menu_items.direct_input.set_enabled(true);
         }
+        // auto_enter 不受其他配置影响，始终保持可用状态
     }
 }
 
@@ -255,26 +265,9 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                 if let Some(menu_items) = &self.menu_items {
                     let mut config = self.config.lock().unwrap();
 
-                    if event.id == menu_items.auto_copy.id() {
-                        config.auto_copy = !config.auto_copy;
-                        if let Err(e) = config.save() {
-                            log::error!("Failed to save config: {}", e);
-                        }
-                        info!(
-                            "Auto copy {}",
-                            if config.auto_copy {
-                                "enabled"
-                            } else {
-                                "disabled"
-                            }
-                        );
-                    } else if event.id == menu_items.auto_paste.id() {
+                    if event.id == menu_items.auto_paste.id() {
                         config.auto_paste = !config.auto_paste;
-                        if config.auto_paste {
-                            config.auto_copy = true;
-                            menu_items.auto_copy.set_checked(true);
-                            menu_items.auto_paste.set_checked(true);
-                        }
+                        menu_items.auto_paste.set_checked(config.auto_paste);
                         if let Err(e) = config.save() {
                             log::error!("Failed to save config: {}", e);
                         }
@@ -286,10 +279,23 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                                 "disabled"
                             }
                         );
+                    } else if event.id == menu_items.auto_enter.id() {
+                        config.auto_enter = !config.auto_enter;
+                        menu_items.auto_enter.set_checked(config.auto_enter);
+                        if let Err(e) = config.save() {
+                            log::error!("Failed to save config: {}", e);
+                        }
+                        info!(
+                            "Auto enter {}",
+                            if config.auto_enter {
+                                "enabled"
+                            } else {
+                                "disabled"
+                            }
+                        );
                     } else if event.id == menu_items.direct_input.id() {
                         config.direct_input = !config.direct_input;
                         if config.direct_input {
-                            config.auto_copy = false;
                             config.auto_paste = false;
                         }
                         if let Err(e) = config.save() {
@@ -321,6 +327,7 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                         );
                     } else if event.id == menu_items.listen_email.id() {
                         config.listen_email = !config.listen_email;
+                        menu_items.listen_email.set_checked(config.listen_email);
                         if let Err(e) = config.save() {
                             log::error!("Failed to save config: {}", e);
                         }
@@ -332,22 +339,59 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                                 "disabled"
                             }
                         );
-                        
-                        // 通知监控系统重启以应用邮件监听配置变更
-                        crate::monitor::signal_restart();
+
+                        // --- 发送命令给Actor ---
+                        let sender = self.monitor_sender.clone();
+                        let enabled = config.listen_email;
+                        tokio::spawn(async move {
+                            let command = if enabled {
+                                MonitorCommand::StartEmailMonitoring
+                            } else {
+                                MonitorCommand::StopEmailMonitoring
+                            };
+                            if let Err(e) = sender.send(command).await {
+                                log::error!("Failed to send command to monitor actor: {}", e);
+                            }
+                        });
+                    } else if event.id == menu_items.listen_message.id() {
+                        config.listen_message = !config.listen_message;
+                        menu_items.listen_message.set_checked(config.listen_message);
+                        if let Err(e) = config.save() {
+                            log::error!("Failed to save config: {}", e);
+                        }
+                        info!(
+                            "Listen message {}",
+                            if config.listen_message {
+                                "enabled"
+                            } else {
+                                "disabled"
+                            }
+                        );
+
+                        // --- 发送命令给Actor ---
+                        let sender = self.monitor_sender.clone();
+                        let enabled = config.listen_message;
+                        tokio::spawn(async move {
+                            let command = if enabled {
+                                MonitorCommand::StartMessageMonitoring
+                            } else {
+                                MonitorCommand::StopMessageMonitoring
+                            };
+                            if let Err(e) = sender.send(command).await {
+                                log::error!("Failed to send command to monitor actor: {}", e);
+                            }
+                        });
                     } else if event.id == menu_items.floating_window.id() {
                         config.floating_window = !config.floating_window;
-                        
+
                         // 悬浮窗开启时强制启用直接输入，禁用剪贴板相关选项
                         if config.floating_window {
                             config.direct_input = true;
-                            config.auto_copy = false;
                             config.auto_paste = false;
                             menu_items.direct_input.set_checked(true);
-                            menu_items.auto_copy.set_checked(false);
                             menu_items.auto_paste.set_checked(false);
                         }
-                        
+
                         if let Err(e) = config.save() {
                             log::error!("Failed to save config: {}", e);
                         }
@@ -359,7 +403,7 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                                 "disabled"
                             }
                         );
-                        
+
                         // 重新应用菜单逻辑
                         self.apply_menu_logic(menu_items, &config);
                     } else if event.id == menu_items.config.id() {
@@ -413,6 +457,7 @@ pub fn run_tray_application(
     quit_requested: Arc<Mutex<bool>>,
     config: Arc<Mutex<Config>>,
     monitor_callback: Option<Box<dyn Fn() + Send>>,
+    monitor_sender: Sender<MonitorCommand>,
 ) {
     let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
 
@@ -426,7 +471,7 @@ pub fn run_tray_application(
         let _ = proxy.send_event(UserEvent::MenuEvent(event));
     }));
 
-    let mut app = TrayApplication::new(quit_requested, config, monitor_callback);
+    let mut app = TrayApplication::new(quit_requested, config, monitor_callback, monitor_sender);
 
     if let Err(err) = event_loop.run_app(&mut app) {
         eprintln!("Error in event loop: {:?}", err);

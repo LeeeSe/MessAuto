@@ -2,7 +2,7 @@ use eframe::{
     egui::{self, vec2},
     App, NativeOptions,
 };
-use crate::clipboard::auto_paste;
+use crate::{clipboard::auto_paste, clipboard::press_enter, config::Config};
 use std::time::{Duration, Instant};
 use winit::platform::macos::EventLoopBuilderExtMacOS;
 
@@ -155,8 +155,19 @@ impl VerificationCodeApp {
         );
 
         if btn_response.clicked() {
-            // 使用 auto_paste 函数，设置 direct_input=true
+            // 使用 auto_paste 函数，设置 direct_input=true（悬浮窗模式下）
             let _ = auto_paste(true, &self.code);
+            
+            // 检查配置，如果 auto_enter 启用，则在 direct_input 后按下回车键
+            if let Ok(config) = Config::load() {
+                if config.auto_enter {
+                    if let Err(e) = press_enter() {
+                        log::error!("Failed to press enter key: {}", e);
+                    } else {
+                        log::info!("Auto-pressed enter key after floating window input");
+                    }
+                }
+            }
         }
     }
 

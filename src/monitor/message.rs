@@ -128,9 +128,18 @@ impl FileProcessor for MessageProcessor {
                                 error!("Failed to direct input verification code: {}", e);
                             } else {
                                 info!("Direct input verification code: {}", code);
+                                
+                                // 如果 auto_enter 启用，在直接输入后立即按下回车键
+                                if config.auto_enter {
+                                    if let Err(e) = clipboard::press_enter() {
+                                        error!("Failed to press enter key: {}", e);
+                                    } else {
+                                        info!("Auto-pressed enter key");
+                                    }
+                                }
                             }
-                        } else if config.auto_copy {
-                            // 剪贴板模式
+                        } else {
+                            // 剪贴板模式（默认行为）
                             if let Err(e) = clipboard::copy_to_clipboard(&code) {
                                 error!("Failed to copy verification code to clipboard: {}", e);
                             } else {
@@ -142,6 +151,24 @@ impl FileProcessor for MessageProcessor {
                                         error!("Failed to auto-paste verification code: {}", e);
                                     } else {
                                         info!("Auto-pasted verification code: {}", code);
+                                        
+                                        // 如果 auto_enter 启用，在自动粘贴后立即按下回车键
+                                        if config.auto_enter {
+                                            if let Err(e) = clipboard::press_enter() {
+                                                error!("Failed to press enter key: {}", e);
+                                            } else {
+                                                info!("Auto-pressed enter key");
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // 如果 auto_paste 未启用但 auto_enter 启用，在复制后立即按下回车键
+                                    if config.auto_enter {
+                                        if let Err(e) = clipboard::press_enter() {
+                                            error!("Failed to press enter key: {}", e);
+                                        } else {
+                                            info!("Auto-pressed enter key");
+                                        }
                                     }
                                 }
                             }
