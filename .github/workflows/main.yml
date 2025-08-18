@@ -20,22 +20,39 @@ jobs:
           override: true
 
       - name: Install dependencies
-        run: cargo install cargo-bundle --git https://github.com/zed-industries/cargo-bundle.git --branch add-plist-extension
+        run: cargo install cargo-packager --locked
 
       - name: Add aarch64 target
         run: rustup target add aarch64-apple-darwin
 
+      - name: Setup macOS Keychain for Signing
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app.keychain
+          # 从 Secrets 解码证书文件
+          echo "${{ secrets.MACOS_CERTIFICATE }}" | base64 --decode > certificate.p12
+
+          # 创建一个临时的、受密码保护的钥匙串
+          security create-keychain -p "${{ secrets.GITHUB_TOKEN }}" $KEYCHAIN_PATH
+          security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
+          security unlock-keychain -p "${{ secrets.GITHUB_TOKEN }}" $KEYCHAIN_PATH
+
+          # 将你的证书导入到临时钥匙串中
+          security import certificate.p12 -k $KEYCHAIN_PATH -P "${{ secrets.MACOS_CERTIFICATE_PASSWORD }}" -A
+
+          # 将临时钥匙串添加到钥匙串搜索列表中
+          security list-keychains -d user -s $KEYCHAIN_PATH
+
+      - name: build x86_64
+        run: cargo build --release
+
+      - name: build aarch64
+        run: cargo build --target aarch64-apple-darwin --release
+
       - name: Bundle for x86_64
-        run: cargo bundle --release
+        run: cargo packager --release
 
       - name: Bundle for aarch64
-        run: cargo bundle --target aarch64-apple-darwin --release
-
-      # - name: Create Release Draft
-      # - id: create_release_draft
-      #   uses: release-drafter/release-drafter@v5
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo packager --target aarch64-apple-darwin --release
 
       - name: Create Release
         id: create_release
@@ -50,12 +67,12 @@ jobs:
 
       - name: Zip binaries
         run: |
-          cd ./target/release/bundle/osx
-          zip -r ../../../../MessAuto_x86_64.zip MessAuto.app
-          cd ../../../../
-          cd ./target/aarch64-apple-darwin/release/bundle/osx
-          zip -r ../../../../../MessAuto_aarch64.zip MessAuto.app
-          cd ../../../../../
+          cd ./target/release
+          zip -r ../../MessAuto_x86_64.zip MessAuto.app
+          cd ../../
+          cd ./target/aarch64-apple-darwin/release
+          zip -r ../../../MessAuto_aarch64.zip MessAuto.app
+          cd ../../../
 
       - name: Upload Release Asset x86_64
         uses: actions/upload-release-asset@v1
