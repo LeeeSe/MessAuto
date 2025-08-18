@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-13-arm64
+    runs-on: macos-latest
 
     steps:
       - uses: actions/checkout@v2
