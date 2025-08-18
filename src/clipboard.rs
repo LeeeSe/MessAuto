@@ -7,8 +7,8 @@ use enigo::{
 pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        use std::process::{Command, Stdio};
         use std::io::Write;
+        use std::process::{Command, Stdio};
 
         // 使用 macOS 的 pbcopy 命令，通过标准输入传递内容
         let mut child = Command::new("pbcopy")
@@ -20,7 +20,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
             stdin
                 .write_all(text.as_bytes())
                 .map_err(|e| format!("Failed to write to pbcopy stdin: {}", e))?;
-            
+
             // 关闭stdin以让pbcopy处理内容
             // stdin会在drop时自动关闭
         }

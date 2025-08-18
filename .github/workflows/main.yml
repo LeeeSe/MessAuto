@@ -4,81 +4,75 @@ on:
   push:
     # branches: [ master ]
     tags:
-      - 'v*'
+      - "v*"
 
 jobs:
   build:
-
-    runs-on: macos-11
+    runs-on: macos-13
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Rust
-      uses: actions-rs/toolchain@v1
-      with:
+      - uses: actions/checkout@v2
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
           toolchain: stable
           profile: minimal
           override: true
 
-    - name: Install dependencies
-      run: cargo install cargo-bundle --git https://github.com/zed-industries/cargo-bundle.git --branch add-plist-extension
+      - name: Install dependencies
+        run: cargo install cargo-bundle --git https://github.com/zed-industries/cargo-bundle.git --branch add-plist-extension
 
-    - name: Add aarch64 target
-      run: rustup target add aarch64-apple-darwin
-      
-    - name: Bundle for x86_64
-      run: cargo bundle --release
+      - name: Add aarch64 target
+        run: rustup target add aarch64-apple-darwin
 
-    - name: Bundle for aarch64
-      run: cargo bundle --target aarch64-apple-darwin --release
+      - name: Bundle for x86_64
+        run: cargo bundle --release
 
-    # - name: Create Release Draft
-    # - id: create_release_draft
-    #   uses: release-drafter/release-drafter@v5
-    #   env:
-    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # provided by Actions, do not need to create your own token
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: ${{ github.ref }}
-        draft: false
-        prerelease: true  # set to true if you want the release to be a pre-release
+      - name: Bundle for aarch64
+        run: cargo bundle --target aarch64-apple-darwin --release
 
-    - name: Zip binaries
-      run: |
-        cd ./target/release/bundle/osx
-        zip -r ../../../../MessAuto_x86_64.zip MessAuto.app
-        cd ../../../../
-        cd ./target/aarch64-apple-darwin/release/bundle/osx
-        zip -r ../../../../../MessAuto_aarch64.zip MessAuto.app
-        cd ../../../../../
+      # - name: Create Release Draft
+      # - id: create_release_draft
+      #   uses: release-drafter/release-drafter@v5
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Upload Release Asset x86_64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
-        asset_path: ./MessAuto_x86_64.zip
-        asset_name: MessAuto_x86_64.zip
-        asset_content_type: application/zip
-    
-    - name: Upload Release Asset aarch64
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
-        asset_path: ./MessAuto_aarch64.zip
-        asset_name: MessAuto_aarch64.zip
-        asset_content_type: application/zip
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # provided by Actions, do not need to create your own token
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          draft: false
+          prerelease: true # set to true if you want the release to be a pre-release
 
+      - name: Zip binaries
+        run: |
+          cd ./target/release/bundle/osx
+          zip -r ../../../../MessAuto_x86_64.zip MessAuto.app
+          cd ../../../../
+          cd ./target/aarch64-apple-darwin/release/bundle/osx
+          zip -r ../../../../../MessAuto_aarch64.zip MessAuto.app
+          cd ../../../../../
 
-#    - name: tests
-#      run: cargo test
+      - name: Upload Release Asset x86_64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
+          asset_path: ./MessAuto_x86_64.zip
+          asset_name: MessAuto_x86_64.zip
+          asset_content_type: application/zip
 
+      - name: Upload Release Asset aarch64
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
+          asset_path: ./MessAuto_aarch64.zip
+          asset_name: MessAuto_aarch64.zip
+          asset_content_type: application/zip
