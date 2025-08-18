@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-13-arm64
 
     steps:
       - uses: actions/checkout@v2
@@ -23,7 +23,7 @@ jobs:
         run: cargo install cargo-packager --locked
 
       - name: Add aarch64 target
-        run: rustup target add aarch64-apple-darwin
+        run: rustup target add x86_64-apple-darwin
 
       - name: Setup macOS Keychain for Signing
         run: |
@@ -42,17 +42,17 @@ jobs:
           # 将临时钥匙串添加到钥匙串搜索列表中
           security list-keychains -d user -s $KEYCHAIN_PATH
 
-      - name: build x86_64
+      - name: build aarch64
         run: cargo build --release
 
-      - name: build aarch64
-        run: cargo build --target aarch64-apple-darwin --release
-
-      - name: Bundle for x86_64
-        run: cargo packager --release
+      - name: build x86_64
+        run: cargo build --target x86_64-apple-darwin --release
 
       - name: Bundle for aarch64
-        run: cargo packager --target aarch64-apple-darwin --release
+        run: cargo packager --release
+
+      - name: Bundle for x86_64
+        run: cargo packager --target x86_64-apple-darwin --release
 
       - name: Create Release
         id: create_release
@@ -68,10 +68,10 @@ jobs:
       - name: Zip binaries
         run: |
           cd ./target/release
-          zip -r ../../MessAuto_x86_64.zip MessAuto.app
+          zip -r ../../MessAuto_aarch64.zip MessAuto.app
           cd ../../
-          cd ./target/aarch64-apple-darwin/release
-          zip -r ../../../MessAuto_aarch64.zip MessAuto.app
+          cd ./target/x86_64-apple-darwin/release
+          zip -r ../../../MessAuto_x86_64.zip MessAuto.app
           cd ../../../
 
       - name: Upload Release Asset x86_64
