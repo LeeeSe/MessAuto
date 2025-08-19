@@ -1,7 +1,52 @@
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::io::{self, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
+
+/// A custom log target that writes to both stdout and a file
+pub struct LogTarget {
+    file: Mutex<std::fs::File>,
+}
+
+impl LogTarget {
+    pub fn new(file: std::fs::File) -> Self {
+        Self {
+            file: Mutex::new(file),
+        }
+    }
+}
+
+impl Write for LogTarget {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        // Write to stdout
+        let stdout_result = io::stdout().write(buf);
+        
+        // Write to file
+        let file_result = {
+            let mut file = self.file.lock().unwrap();
+            file.write(buf)
+        };
+        
+        // Return the result of stdout write (or file write if stdout failed)
+        stdout_result.or(file_result)
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        // Flush stdout
+        let stdout_result = io::stdout().flush();
+        
+        // Flush file
+        let file_result = {
+            let mut file = self.file.lock().unwrap();
+            file.flush()
+        };
+        
+        // Return the result of stdout flush (or file flush if stdout failed)
+        stdout_result.or(file_result)
+    }
+}
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Config {
@@ -53,8 +98,8 @@ impl Config {
     }
 
     pub fn get_log_file_path() -> PathBuf {
-        dirs::state_dir()
-            .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
+        dirs::config_dir()
+            .unwrap_or_default()
             .join("messauto")
             .join("logs")
             .join("app.log")
@@ -145,27 +190,24 @@ impl Config {
 
     // 初始化日志系统
     pub fn init_logging() -> Result<(), Box<dyn std::error::Error>> {
-        let log_dir = dirs::state_dir()
-            .unwrap_or_else(|| dirs::home_dir().unwrap_or_default())
+        let log_dir = dirs::config_dir()
+            .unwrap_or_default()
             .join("messauto")
             .join("logs");
 
         fs::create_dir_all(&log_dir)?;
 
-        env_logger::Builder::from_default_env()
-            .filter_level(log::LevelFilter::Info)
-            .target(env_logger::Target::Pipe(Box::new(std::io::stdout())))
-            .init();
-
-        // 写入文件副本
-        if let Ok(mut log_file) = std::fs::OpenOptions::new()
+        // 创建日志文件
+        let log_file = std::fs::OpenOptions::new()
             .create(true)
             .append(true)
-            .open(log_dir.join("app.log"))
-        {
-            use std::io::Write;
-            let _ = writeln!(log_file, "Logging initialized at: {:?}", chrono::Utc::now());
-        }
+            .open(log_dir.join("app.log"))?;
+
+        // 创建一个自定义的日志目标，同时写入stdout和文件
+        env_logger::Builder::from_default_env()
+            .filter_level(log::LevelFilter::Info)
+            .target(env_logger::Target::Pipe(Box::new(LogTarget::new(log_file))))
+            .init();
 
         log::info!("{}", t!("logging.initialized"));
         Ok(())

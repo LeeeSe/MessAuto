@@ -18,26 +18,6 @@ logging:
     en: Migrating legacy config
     zh-CN: 迁移旧版配置
 
-monitor:
-  starting_test_verification_window:
-    en: Starting test verification window...
-    zh-CN: 启动测试验证码窗口...
-  floating_window_process_started:
-    en: Floating window process started:%{child}
-    zh-CN: 悬浮窗进程已启动:%{child}
-  second_floating_window_process_started:
-    en: Second floating window process started:%{child2}
-    zh-CN: 第二个悬浮窗进程已启动:%{child2}
-  starting_verification_extractor:
-    en: Starting verification extractor...
-    zh-CN: 启动验证码提取器...
-  shutting_down_application:
-    en: Shutting down application...
-    zh-CN: 关闭应用程序...
-  application_exited:
-    en: Application exited
-    zh-CN: 应用程序已退出
-
 tray:
   initializing_tray_icon:
     en: Initializing tray icon...
@@ -147,45 +127,63 @@ monitor:
   found_verification_code_email:
     en: Found verification code in email:%{code}
     zh-CN: 在邮件中找到验证码:%{code}
-floating_window_spawned:
+  floating_window_spawned:
     en: Floating window spawned successfully
     zh-CN: 悬浮窗创建成功
-failed_to_spawn_floating_window:
+  failed_to_spawn_floating_window:
     en: Failed to spawn floating window:%{error}
     zh-CN: 创建悬浮窗失败:%{error}
-failed_to_direct_input:
+  failed_to_direct_input:
     en: Failed to direct input verification code:%{error}
     zh-CN: 直接输入验证码失败:%{error}
-direct_input_verification_code:
+  direct_input_verification_code:
     en: Direct input verification code:%{code}
     zh-CN: 直接输入验证码:%{code}
-failed_to_press_enter:
+  failed_to_press_enter:
     en: Failed to press enter key:%{error}
     zh-CN: 按下回车键失败:%{error}
-auto_pressed_enter:
+  auto_pressed_enter:
     en: Auto-pressed enter key
     zh-CN: 自动按下回车键
-failed_to_copy_to_clipboard:
+  failed_to_copy_to_clipboard:
     en: Failed to copy verification code to clipboard:%{error}
     zh-CN: 复制验证码到剪贴板失败:%{error}
-auto_copied_to_clipboard:
+  auto_copied_to_clipboard:
     en: Auto-copied verification code to clipboard:%{code}
     zh-CN: 自动复制验证码到剪贴板:%{code}
-failed_to_auto_paste:
+  failed_to_auto_paste:
     en: Failed to auto-paste verification code:%{error}
     zh-CN: 自动粘贴验证码失败:%{error}
-auto_pasted_verification_code:
+  auto_pasted_verification_code:
     en: Auto-pasted verification code:%{code}
     zh-CN: 自动粘贴验证码:%{code}
-no_verification_code_email:
+  no_verification_code_email:
     en: No verification code found in email
     zh-CN: 邮件中未找到验证码
-failed_to_press_enter_floating:
+  failed_to_press_enter_floating:
     en: Failed to press enter key:%{error}
     zh-CN: 按下回车键失败:%{error}
-auto_pressed_enter_floating:
+  auto_pressed_enter_floating:
     en: Auto-pressed enter key after floating window input
     zh-CN: 悬浮窗输入后自动按下回车键
+  starting_test_verification_window:
+    en: Starting test verification window...
+    zh-CN: 启动测试验证码窗口...
+  floating_window_process_started:
+    en: Floating window process started:%{child}
+    zh-CN: 悬浮窗进程已启动:%{child}
+  second_floating_window_process_started:
+    en: Second floating window process started:%{child2}
+    zh-CN: 第二个悬浮窗进程已启动:%{child2}
+  starting_verification_extractor:
+    en: Starting verification extractor...
+    zh-CN: 启动验证码提取器...
+  shutting_down_application:
+    en: Shutting down application...
+    zh-CN: 关闭应用程序...
+  application_exited:
+    en: Application exited
+    zh-CN: 应用程序已退出
 actor:
   actor_running:
     en: MonitorActor is running and waiting for commands.
@@ -241,6 +239,7 @@ actor:
   failed_to_send_initial_start_email:
     en: Failed to send initial start email command:%{error}
     zh-CN: 发送初始启动邮件命令失败:%{error}
+
 menu:
   auto_paste:
     en: Auto Paste
@@ -291,3 +290,59 @@ launch_manager:
   tray_hidden:
     en: Tray icon hidden
     zh-CN: 托盘图标已隐藏
+
+updater:
+  checking_updates:
+    en: Checking for updates...
+    zh-CN: 开始检查更新...
+  current_arch:
+    en: Current architecture:%{arch}
+    zh-CN: 当前架构:%{arch}
+  failed_to_parse_version:
+    en: Failed to parse current version:%{error}
+    zh-CN: 解析当前版本失败:%{error}
+  update_endpoint:
+    en: Update endpoint:%{endpoint}
+    zh-CN: 检查更新的 endpoint:%{endpoint}
+  new_version_found:
+    en: New version found:%{version}
+    zh-CN: 发现新版本:%{version}
+  update_download_complete:
+    en: Update download complete, preparing to install
+    zh-CN: 更新下载完成，准备安装
+  update_download_failed:
+    en: Failed to download update:%{error}
+    zh-CN: 下载更新失败:%{error}
+  user_canceled_update:
+    en: User canceled update installation
+    zh-CN: 用户取消安装更新
+  update_check_failed:
+    en: Failed to check for updates:%{error}
+    zh-CN: 检查更新失败:%{error}
+  already_up_to_date:
+    en: Application is already up to date.
+    zh-CN: 应用已是最新版本。
+  downloading_update:
+    en: Downloading update in background...
+    zh-CN: 正在后台下载更新...
+  update_downloaded:
+    en: Update downloaded successfully
+    zh-CN: 更新下载完成
+  installing_update:
+    en: Installing update...
+    zh-CN: 正在安装更新...
+  new_version_downloaded:
+    en: New version %{version} has been downloaded. Install now?
+    zh-CN: 新版本 %{version} 已下载完成。是否现在安装更新？
+  update_available:
+    en: MessAuto Update Available
+    zh-CN: MessAuto 更新可用
+  user_chosen_install:
+    en: User chose to install update
+    zh-CN: 用户选择安装更新
+  user_chosen_later:
+    en: User chose to install update later
+    zh-CN: 用户选择稍后安装更新
+  install:
+    en: Install
+    zh-CN: 安装
