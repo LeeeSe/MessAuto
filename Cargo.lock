@@ -2831,7 +2831,7 @@ dependencies = [
 
 [[package]]
 name = "messauto"
-version = "1.1.0"
+version = "1.1.2"
 dependencies = [
  "auto-launch",
  "cargo-packager-updater",
