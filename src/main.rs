@@ -4,6 +4,7 @@ mod floating_window;
 mod ipc;
 mod launch;
 mod monitor;
+mod notification;
 mod parser;
 mod tray;
 
