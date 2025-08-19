@@ -1,4 +1,5 @@
 /target
 /.claude
-/CLAUDE.md
-/.DS_Store
+CLAUDE.md
+.DS_Store
+**/.DS_Store
