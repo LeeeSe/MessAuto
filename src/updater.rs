@@ -1,8 +1,8 @@
 use crate::notification;
 use cargo_packager_updater::{Config, Update, check_update, semver::Version};
 use log::{error, info};
-use std::thread;
 use std::env;
+use std::thread;
 
 fn get_current_arch() -> &'static str {
     if cfg!(target_arch = "aarch64") {
@@ -16,7 +16,10 @@ fn get_current_arch() -> &'static str {
 
 fn get_endpoint() -> String {
     let arch = get_current_arch();
-    format!("https://github.com/LeeeSe/MessAuto/releases/latest/download/update-{}.json", arch)
+    format!(
+        "https://github.com/LeeeSe/MessAuto/releases/latest/download/update-{}.json",
+        arch
+    )
 }
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");

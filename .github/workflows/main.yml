@@ -93,23 +93,23 @@ jobs:
 
           # 为 aarch64 生成 update.json
           SIGNATURE_AARCH64=$(cat "${DMG_AARCH64}.sig")
-          echo '{
-            "version": "${{ github.ref_name }}",
-            "pub_date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
-            "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_aarch64.dmg",
-            "signature": "'$SIGNATURE_AARCH64'",
-            "format": "app"
-          }' > ./update-aarch64.json
+          echo "{
+            \"version\": \"${{ github.ref_name }}\",
+            \"pub_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
+            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_aarch64.dmg\",
+            \"signature\": \"$SIGNATURE_AARCH64\",
+            \"format\": \"app\"
+          }" > ./update-aarch64.json
 
           # 为 x86_64 生成 update.json
           SIGNATURE_X86_64=$(cat "${DMG_X86_64}.sig")
-          echo '{
-            "version": "${{ github.ref_name }}",
-            "pub_date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
-            "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_x64.dmg",
-            "signature": "'$SIGNATURE_X86_64'",
-            "format": "app"
-          }' > ./update-x86_64.json
+          echo "{
+            \"version\": \"${{ github.ref_name }}\",
+            \"pub_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
+            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_x64.dmg\",
+            \"signature\": \"$SIGNATURE_X86_64\",
+            \"format\": \"app\"
+          }" > ./update-x86_64.json
 
       - name: Upload Release Assets
         run: |
