@@ -2,6 +2,22 @@ use crate::notification;
 use cargo_packager_updater::{Config, Update, check_update, semver::Version};
 use log::{error, info};
 use std::thread;
+use std::env;
+
+fn get_current_arch() -> &'static str {
+    if cfg!(target_arch = "aarch64") {
+        "aarch64"
+    } else if cfg!(target_arch = "x86_64") {
+        "x86_64"
+    } else {
+        "universal"
+    }
+}
+
+fn get_endpoint() -> String {
+    let arch = get_current_arch();
+    format!("https://github.com/LeeeSe/MessAuto/releases/latest/download/update-{}.json", arch)
+}
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -10,6 +26,7 @@ const PUB_KEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2N
 pub fn check_for_updates() {
     thread::spawn(move || {
         info!("开始检查更新...");
+        info!("当前架构: {}", get_current_arch());
 
         let current_version = match Version::parse(CURRENT_VERSION) {
             Ok(version) => version,
@@ -19,9 +36,11 @@ pub fn check_for_updates() {
             }
         };
 
+        let endpoint = get_endpoint();
+
         let config = Config {
             pubkey: PUB_KEY.into(),
-            endpoints: vec!["https://github.com/LeeeSe/MessAuto/releases/latest/download/update-macos-universal.json".parse().unwrap()],
+            endpoints: vec![endpoint.parse().unwrap()],
             ..Default::default()
         };
 
