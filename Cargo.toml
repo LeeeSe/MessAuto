@@ -24,9 +24,9 @@ regex-lite = "0.1.6"
 email = "0.0.21"
 rust-i18n = "3.1.5"
 auto-launch = "0.5.0"
+cargo-packager-updater = "0.2.3"
 
 [package.metadata.packager]
-before-packaging-command = "cargo build --release"
 product-name = "MessAuto"
 identifier = "com.leeese.messauto"
 icons = ["resources/icon_256.png"]

@@ -8,43 +8,32 @@ on:
 
 permissions:
   contents: write
-  issues: write
-  pull-requests: write
 
 jobs:
   build:
     runs-on: macos-latest
 
     steps:
-      - uses: actions/checkout@v2
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust stable toolchain
+        uses: dtolnay/rust-toolchain@stable
 
       - name: Install dependencies
         run: cargo install cargo-packager --locked
 
-      - name: Add aarch64 target
+      - name: Add x86_64 target
         run: rustup target add x86_64-apple-darwin
 
       - name: Setup macOS Keychain for Signing
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/app.keychain
-          # 从 Secrets 解码证书文件
           echo "${{ secrets.MACOS_CERTIFICATE }}" | base64 --decode > certificate.p12
-
-          # 创建一个临时的、受密码保护的钥匙串
           security create-keychain -p "${{ secrets.GITHUB_TOKEN }}" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           security unlock-keychain -p "${{ secrets.GITHUB_TOKEN }}" $KEYCHAIN_PATH
-
-          # 将你的证书导入到临时钥匙串中
           security import certificate.p12 -k $KEYCHAIN_PATH -P "${{ secrets.MACOS_CERTIFICATE_PASSWORD }}" -A
-
-          # 将临时钥匙串添加到钥匙串搜索列表中
           security list-keychains -d user -s $KEYCHAIN_PATH
 
       - name: build aarch64
@@ -70,31 +59,65 @@ jobs:
           draft: false
           prerelease: true # set to true if you want the release to be a pre-release
 
-      - name: Zip binaries
+      - name: Read version from Cargo.toml
+        id: package_version
         run: |
-          cd ./target/release
-          zip -r ../../MessAuto_aarch64.zip MessAuto.app
-          cd ../../
-          cd ./target/x86_64-apple-darwin/release
-          zip -r ../../../MessAuto_x86_64.zip MessAuto.app
-          cd ../../../
+          # 从 Cargo.toml 中提取 version = "x.y.z" 这一行，并抽取出版本号
+          VERSION=$(grep '^version =' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Upload Release Asset x86_64
-        uses: actions/upload-release-asset@v1
+      - name: Sign DMG files for Updater
+        run: |
+          VERSION=${{ steps.package_version.outputs.version }}
+          # 定义两个架构的 DMG 文件路径
+          DMG_AARCH64="./target/release/MessAuto_${VERSION}_aarch64.dmg"
+          DMG_X86_64="./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg"
+
+          echo "Signing AARCH64 DMG..."
+          cargo packager signer sign \
+            --private-key ${{ secrets.UPDATER_PRIVATE_KEY }} \
+            --password ${{ secrets.UPDATER_KEY_PASSWORD }} \
+            "$DMG_AARCH64"
+
+          echo "Signing X86_64 DMG..."
+          cargo packager signer sign \
+            --private-key ${{ secrets.UPDATER_PRIVATE_KEY }} \
+            --password ${{ secrets.UPDATER_KEY_PASSWORD }} \
+            "$DMG_X86_64"
+
+      - name: Create Update Manifests (update.json)
+        run: |
+          VERSION=${{ steps.package_version.outputs.version }}
+          DMG_AARCH64="./target/release/MessAuto_${VERSION}_aarch64.dmg"
+          DMG_X86_64="./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg"
+
+          # 为 aarch64 生成 update.json
+          SIGNATURE_AARCH64=$(cat "${DMG_AARCH64}.sig")
+          echo '{
+            "version": "${{ github.ref_name }}",
+            "pub_date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+            "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_aarch64.dmg",
+            "signature": "'$SIGNATURE_AARCH64'",
+            "format": "app"
+          }' > ./update-aarch64.json
+
+          # 为 x86_64 生成 update.json
+          SIGNATURE_X86_64=$(cat "${DMG_X86_64}.sig")
+          echo '{
+            "version": "${{ github.ref_name }}",
+            "pub_date": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'",
+            "url": "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_x64.dmg",
+            "signature": "'$SIGNATURE_X86_64'",
+            "format": "app"
+          }' > ./update-x86_64.json
+
+      - name: Upload Release Assets
+        run: |
+          VERSION=${{ steps.package_version.outputs.version }}
+          gh release upload ${{ github.ref_name }} \
+            ./target/release/MessAuto_${VERSION}_aarch64.dmg \
+            ./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg \
+            ./update-aarch64.json \
+            ./update-x86_64.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
-          asset_path: ./MessAuto_x86_64.zip
-          asset_name: MessAuto_x86_64.zip
-          asset_content_type: application/zip
-
-      - name: Upload Release Asset aarch64
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above
-          asset_path: ./MessAuto_aarch64.zip
-          asset_name: MessAuto_aarch64.zip
-          asset_content_type: application/zip

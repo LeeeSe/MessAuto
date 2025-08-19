@@ -7,6 +7,7 @@ mod monitor;
 mod notification;
 mod parser;
 mod tray;
+mod updater;
 
 use log::info;
 use rust_i18n::t;

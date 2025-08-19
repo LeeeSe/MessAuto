@@ -7,7 +7,7 @@ fn get_icon_script_part() -> String {
             if path.ends_with("Contents/MacOS") {
                 path.pop();
                 path.pop();
-                path.push("Contents/Resources/mess.icns");
+                path.push("Contents/Resources/Messauto.icns");
 
                 if path.exists() {
                     return format!(r#"with icon (POSIX file "{}")"#, path.to_string_lossy());
@@ -21,16 +21,6 @@ fn get_icon_script_part() -> String {
     "".to_string()
 }
 
-/// Displays a dialog box with the specified title, content, and button labels
-///
-/// # Arguments
-/// * `title` - The window title for the dialog
-/// * `content` - The main text content to display
-/// * `true_button` - Label for the button that returns true
-/// * `false_button` - Label for the button that returns false
-///
-/// # Returns
-/// * `bool` - true if the true_button was clicked, false if false_button was clicked or dialog was cancelled
 pub fn dialog(title: &str, content: &str, true_button: &str, false_button: &str) -> bool {
     let icon_part = get_icon_script_part();
 

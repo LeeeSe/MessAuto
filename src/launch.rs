@@ -17,12 +17,8 @@ impl LaunchManager {
         let app_name = "Messauto";
         let app_path = Self::get_app_path()?;
 
-        let auto_launch = AutoLaunch::new(
-            app_name,
-            &app_path.to_string_lossy(),
-            true,           // use default args
-            &[] as &[&str], // default args
-        );
+        let auto_launch =
+            AutoLaunch::new(app_name, &app_path.to_string_lossy(), true, &[] as &[&str]);
 
         Ok(Self { auto_launch })
     }

@@ -1,6 +1,7 @@
 use crate::config::Config;
 use crate::launch::LaunchManager;
 use crate::monitor::commands::MonitorCommand;
+use crate::updater;
 use log::{info, trace};
 use rust_i18n::t;
 use std::env;
@@ -41,6 +42,7 @@ struct MenuItems {
     floating_window: CheckMenuItem,
     config: MenuItem,
     log: MenuItem,
+    check_update: MenuItem,
     hide_tray: MenuItem,
     exit: MenuItem,
 }
@@ -200,6 +202,7 @@ impl TrayApplication {
             ),
             config: MenuItem::new(&t!("menu.config"), true, None),
             log: MenuItem::new(&t!("menu.log"), true, None),
+            check_update: MenuItem::new(&t!("menu.check_update"), true, None),
             hide_tray: MenuItem::new(&t!("menu.hide_tray"), true, None),
             exit: MenuItem::new(&t!("menu.exit"), true, None),
         };
@@ -227,6 +230,7 @@ impl TrayApplication {
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.config)?;
         menu.append(&items_ref.log)?;
+        menu.append(&items_ref.check_update)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.hide_tray)?;
         menu.append(&items_ref.exit)?;
@@ -489,6 +493,10 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                         {
                             log::warn!("Log file opening is only supported on macOS");
                         }
+                    } else if event.id == menu_items.check_update.id() {
+                        // check update menu item - trigger update check
+                        info!("用户触发检查更新");
+                        updater::check_for_updates();
                     } else if event.id == menu_items.hide_tray.id() {
                         if let Some(ref mut tray_icon) = self.tray_icon {
                             if let Err(e) = tray_icon.set_visible(false) {

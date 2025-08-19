@@ -275,6 +275,9 @@ menu:
   exit:
     en: Exit
     zh-CN: 退出
+  check_update:
+    en: Check Update
+    zh-CN: 检查更新
 launch_manager:
   enabled_launch_at_login:
     en: Launch at login enabled
