@@ -66,47 +66,56 @@ jobs:
           VERSION=$(grep '^version =' Cargo.toml | sed 's/version = "\(.*\)"/\1/')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Sign DMG files for Updater
+      - name: Create targz Archives
         run: |
           VERSION=${{ steps.package_version.outputs.version }}
-          # 定义两个架构的 DMG 文件路径
-          DMG_AARCH64="./target/release/MessAuto_${VERSION}_aarch64.dmg"
-          DMG_X86_64="./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg"
+          echo "Creating aarch64 .tar.gz archive..."
+          # -C 参数可以让我们在指定的目录中执行压缩，避免在归档中包含多余的父目录
+          tar -czf "MessAuto_${VERSION}_aarch64.app.tar.gz" -C ./target/release/MessAuto.app
+          echo "Creating x86_64 .tar.gz archive..."
+          tar -czf "MessAuto_${VERSION}_x64.app.tar.gz" -C ./target/x86_64-apple-darwin/release/MessAuto.app
 
-          echo "Signing AARCH64 DMG..."
+      - name: Sign Archives for Updater
+        run: |
+          VERSION=${{ steps.package_version.outputs.version }}
+          # 定义两个架构的 .tar.gz 文件路径
+          ARCHIVE_AARCH64="./MessAuto_${VERSION}_aarch64.app.tar.gz"
+          ARCHIVE_X86_64="./MessAuto_${VERSION}_x64.app.tar.gz"
+
+          echo "Signing AARCH64 archive..."
           cargo packager signer sign \
             --private-key ${{ secrets.UPDATER_PRIVATE_KEY }} \
             --password ${{ secrets.UPDATER_KEY_PASSWORD }} \
-            "$DMG_AARCH64"
+            "$ARCHIVE_AARCH64"
 
-          echo "Signing X86_64 DMG..."
+          echo "Signing X86_64 archive..."
           cargo packager signer sign \
             --private-key ${{ secrets.UPDATER_PRIVATE_KEY }} \
             --password ${{ secrets.UPDATER_KEY_PASSWORD }} \
-            "$DMG_X86_64"
+            "$ARCHIVE_X86_64"
 
       - name: Create Update Manifests (update.json)
         run: |
           VERSION=${{ steps.package_version.outputs.version }}
-          DMG_AARCH64="./target/release/MessAuto_${VERSION}_aarch64.dmg"
-          DMG_X86_64="./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg"
+          ARCHIVE_AARCH64="./MessAuto_${VERSION}_aarch64.app.tar.gz"
+          ARCHIVE_X86_64="./MessAuto_${VERSION}_x64.app.tar.gz"
 
           # 为 aarch64 生成 update.json
-          SIGNATURE_AARCH64=$(cat "${DMG_AARCH64}.sig")
+          SIGNATURE_AARCH64=$(cat "${ARCHIVE_AARCH64}.sig")
           echo "{
             \"version\": \"${{ github.ref_name }}\",
             \"pub_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
-            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_aarch64.dmg\",
+            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_aarch64.app.tar.gz\",
             \"signature\": \"$SIGNATURE_AARCH64\",
             \"format\": \"app\"
           }" > ./update-aarch64.json
 
           # 为 x86_64 生成 update.json
-          SIGNATURE_X86_64=$(cat "${DMG_X86_64}.sig")
+          SIGNATURE_X86_64=$(cat "${ARCHIVE_X86_64}.sig")
           echo "{
             \"version\": \"${{ github.ref_name }}\",
             \"pub_date\": \"$(date -u +"%Y-%m-%dT%H:%M:%SZ")\",
-            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_x64.dmg\",
+            \"url\": \"https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/MessAuto_${VERSION}_x64.app.tar.gz\",
             \"signature\": \"$SIGNATURE_X86_64\",
             \"format\": \"app\"
           }" > ./update-x86_64.json
@@ -117,6 +126,8 @@ jobs:
           gh release upload ${{ github.ref_name }} \
             ./target/release/MessAuto_${VERSION}_aarch64.dmg \
             ./target/x86_64-apple-darwin/release/MessAuto_${VERSION}_x64.dmg \
+            ./MessAuto_${VERSION}_aarch64.app.tar.gz \
+            ./MessAuto_${VERSION}_x64.app.tar.gz \
             ./update-aarch64.json \
             ./update-x86_64.json
         env:

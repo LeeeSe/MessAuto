@@ -37,7 +37,10 @@ pub fn check_for_updates() {
         let current_version = match Version::parse(CURRENT_VERSION) {
             Ok(version) => version,
             Err(e) => {
-                error!("{}", t!("updater.failed_to_parse_version", error = e.to_string()));
+                error!(
+                    "{}",
+                    t!("updater.failed_to_parse_version", error = e.to_string())
+                );
                 return;
             }
         };
@@ -52,20 +55,38 @@ pub fn check_for_updates() {
 
         match check_update(current_version, config) {
             Ok(Some(update)) => {
-                info!("{}", t!("updater.new_version_found", version = update.version.to_string()));
+                info!(
+                    "{}",
+                    t!(
+                        "updater.new_version_found",
+                        version = update.version.to_string()
+                    )
+                );
                 match download_update(update) {
                     Ok((update_obj, update_bytes)) => {
                         info!("{}", t!("updater.update_download_complete"));
                         if show_install_notification(&update_obj.version) {
+                            let byc = update_bytes.clone();
                             if let Err(e) = install_update(update_obj, update_bytes) {
-                                error!("{}", t!("updater.update_check_failed", error = e.to_string()));
+                                error!(
+                                    "{}",
+                                    t!("updater.update_check_failed", error = e.to_string())
+                                );
+                                // 输出 update_bytes 的前 100 可读数据
+                                info!(
+                                    "update_bytes (first 64 bytes in hex): {:02x?}",
+                                    &byc[..std::cmp::min(64, byc.len())]
+                                );
                             }
                         } else {
                             info!("{}", t!("updater.user_canceled_update"));
                         }
                     }
                     Err(e) => {
-                        error!("{}", t!("updater.update_download_failed", error = e.to_string()));
+                        error!(
+                            "{}",
+                            t!("updater.update_download_failed", error = e.to_string())
+                        );
                     }
                 }
             }
@@ -73,7 +94,10 @@ pub fn check_for_updates() {
                 info!("{}", t!("updater.already_up_to_date"));
             }
             Err(e) => {
-                error!("{}", t!("updater.update_check_failed", error = e.to_string()));
+                error!(
+                    "{}",
+                    t!("updater.update_check_failed", error = e.to_string())
+                );
             }
         }
     });
@@ -81,6 +105,7 @@ pub fn check_for_updates() {
 
 fn download_update(update: Update) -> Result<(Update, Vec<u8>), Box<dyn std::error::Error>> {
     info!("{}", t!("updater.downloading_update"));
+    info!("{:?}", update.download_url);
 
     let update_bytes = update.download()?;
     info!("{}", t!("updater.update_downloaded"));
@@ -99,7 +124,10 @@ fn install_update(update: Update, update_bytes: Vec<u8>) -> Result<(), Box<dyn s
 }
 
 fn show_install_notification(version: &str) -> bool {
-    info!("{}", t!("updater.new_version_downloaded", version = version));
+    info!(
+        "{}",
+        t!("updater.new_version_downloaded", version = version)
+    );
 
     // 使用系统通知询问用户是否要安装更新
     let title = t!("updater.update_available");
@@ -109,7 +137,12 @@ fn show_install_notification(version: &str) -> bool {
         t!("updater.update_installed")
     );
 
-    let user_choice = notification::dialog(&title, &content, &t!("updater.install"), &t!("updater.user_chosen_later"));
+    let user_choice = notification::dialog(
+        &title,
+        &content,
+        &t!("updater.install"),
+        &t!("updater.user_chosen_later"),
+    );
 
     if user_choice {
         info!("{}", t!("updater.user_chosen_install"));
