@@ -25,6 +25,7 @@ email = "0.0.21"
 rust-i18n = "3.1.5"
 auto-launch = "0.5.0"
 cargo-packager-updater = "0.2.3"
+sys-locale = "0.3.2"
 
 [package.metadata.packager]
 product-name = "MessAuto"

@@ -2,6 +2,7 @@ mod clipboard;
 mod config;
 mod floating_window;
 mod ipc;
+mod language;
 mod launch;
 mod monitor;
 mod notification;
@@ -22,7 +23,10 @@ use tokio::runtime::Runtime;
 rust_i18n::i18n!("./locales");
 
 fn main() {
-    rust_i18n::set_locale("en");
+    // Detect and set system locale
+    let system_locale = language::detect_system_locale();
+    log::info!("语言: {}", system_locale);
+    rust_i18n::set_locale(&system_locale);
     println!("=== {} ===", t!("app.name"));
 
     if let Err(e) = config::Config::init_logging() {
