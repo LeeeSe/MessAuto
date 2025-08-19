@@ -291,3 +291,62 @@ launch_manager:
   tray_hidden:
     en: Tray icon hidden
     zh-CN: 托盘图标已隐藏
+
+updater:
+  checking_for_updates:
+    en: Checking for updates...
+    zh-CN: 开始检查更新...
+  current_architecture:
+    en: Current architecture: {}
+    zh-CN: 当前架构: {}
+  endpoint_for_update:
+    en: Update endpoint: {}
+    zh-CN: 检查更新的 endpoint: {}
+  failed_to_parse_current_version:
+    en: Failed to parse current version: {}
+    zh-CN: 解析当前版本失败: {}
+  new_version_found:
+    en: New version found: {}
+    zh-CN: 发现新版本: {}
+  update_download_complete_ready_to_install:
+    en: Update download complete, ready to install
+    zh-CN: 更新下载完成，准备安装
+  user_cancelled_update_installation:
+    en: User cancelled update installation
+    zh-CN: 用户取消安装更新
+  failed_to_download_update:
+    en: Failed to download update: {}
+    zh-CN: 下载更新失败: {}
+  already_up_to_date:
+    en: Application is already up to date.
+    zh-CN: 应用已是最新版本。
+  failed_to_check_for_updates:
+    en: Failed to check for updates: {}
+    zh-CN: 检查更新失败: {}
+  downloading_update_in_background:
+    en: Downloading update in background...
+    zh-CN: 正在后台下载更新...
+  update_download_complete:
+    en: Update download complete
+    zh-CN: 更新下载完成
+  installing_update:
+    en: Installing update...
+    zh-CN: 正在安装更新...
+  update_installed_successfully_app_will_restart:
+    en: Update installed successfully, application will restart
+    zh-CN: 更新安装成功，应用将重启
+  new_version_downloaded_ask_user_to_install:
+    en: New version {} has been downloaded, ask user to install
+    zh-CN: 新版本 {} 已下载完成，询问用户是否安装
+  update_available_dialog_title:
+    en: MessAuto Update Available
+    zh-CN: MessAuto 更新可用
+  update_available_dialog_content:
+    en: New version {} has been downloaded. Would you like to install the update now?\n\nThe application will restart automatically after installation.
+    zh-CN: 新版本 {} 已下载完成。是否现在安装更新？\n\n安装后应用将自动重启。
+  user_chosen_to_install_update:
+    en: User chosen to install update
+    zh-CN: 用户选择安装更新
+  user_chosen_to_install_update_later:
+    en: User chosen to install update later
+    zh-CN: 用户选择稍后安装更新
