@@ -16,10 +16,12 @@ fn get_current_arch() -> &'static str {
 
 fn get_endpoint() -> String {
     let arch = get_current_arch();
-    format!(
+    let endpoint = format!(
         "https://github.com/LeeeSe/MessAuto/releases/latest/download/update-{}.json",
         arch
-    )
+    );
+    info!("检查更新的 endpoint: {}", endpoint);
+    endpoint
 }
 
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
