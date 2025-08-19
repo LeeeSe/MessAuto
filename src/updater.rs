@@ -3,6 +3,7 @@ use cargo_packager_updater::{Config, Update, check_update, semver::Version};
 use log::{error, info};
 use rust_i18n::t;
 use std::env;
+use std::process::{Command, exit};
 use std::thread;
 
 fn get_current_arch() -> &'static str {
@@ -65,19 +66,14 @@ pub fn check_for_updates() {
                 match download_update(update) {
                     Ok((update_obj, update_bytes)) => {
                         info!("{}", t!("updater.update_download_complete"));
-                        if show_install_notification(&update_obj.version) {
-                            let byc = update_bytes.clone();
-                            if let Err(e) = install_update(update_obj, update_bytes) {
-                                error!(
-                                    "{}",
-                                    t!("updater.update_check_failed", error = e.to_string())
-                                );
-                                // 输出 update_bytes 的前 100 可读数据
-                                info!(
-                                    "update_bytes (first 64 bytes in hex): {:02x?}",
-                                    &byc[..std::cmp::min(64, byc.len())]
-                                );
-                            }
+                        if let Err(e) = install_update(update_obj.clone(), update_bytes) {
+                            error!(
+                                "{}",
+                                t!("updater.update_check_failed", error = e.to_string())
+                            );
+                        }
+                        if show_restart_notification(&update_obj.version) {
+                            restart_app();
                         } else {
                             info!("{}", t!("updater.user_canceled_update"));
                         }
@@ -123,7 +119,7 @@ fn install_update(update: Update, update_bytes: Vec<u8>) -> Result<(), Box<dyn s
     Ok(())
 }
 
-fn show_install_notification(version: &str) -> bool {
+fn show_restart_notification(version: &str) -> bool {
     info!(
         "{}",
         t!("updater.new_version_downloaded", version = version)
@@ -133,22 +129,38 @@ fn show_install_notification(version: &str) -> bool {
     let title = t!("updater.update_available");
     let content = format!(
         "{}\n\n{}",
-        t!("updater.new_version_downloaded", version = version),
-        t!("updater.update_installed")
+        t!("updater.new_version_installed", version = version),
+        t!("updater.choose_restart_manually")
     );
 
     let user_choice = notification::dialog(
         &title,
         &content,
-        &t!("updater.install"),
-        &t!("updater.user_chosen_later"),
+        &t!("updater.restart_now"),
+        &t!("updater.restart_later"),
     );
 
     if user_choice {
-        info!("{}", t!("updater.user_chosen_install"));
+        info!("{}", t!("updater.user_chosen_restart"));
     } else {
-        info!("{}", t!("updater.user_chosen_later"));
+        info!("{}", t!("updater.user_chosen_restart_later"));
     }
 
     user_choice
+}
+
+pub fn restart_app() {
+    if let Ok(current_exe) = env::current_exe() {
+        if let Some(app_path) = current_exe
+            .parent()
+            .and_then(|p| p.parent())
+            .and_then(|p| p.parent())
+        {
+            if Command::new("open").arg("-n").arg(app_path).spawn().is_ok() {
+                info!("{}", t!("updater.app_restarted"));
+                exit(0);
+            }
+        }
+    }
+    error!("{}", t!("updater.failed_to_restart"));
 }

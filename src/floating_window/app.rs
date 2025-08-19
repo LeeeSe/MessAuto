@@ -163,7 +163,10 @@ impl VerificationCodeApp {
             if let Ok(config) = Config::load() {
                 if config.auto_enter {
                     if let Err(e) = press_enter() {
-                        log::error!("{}", t!("monitor.failed_to_press_enter_floating", error = e));
+                        log::error!(
+                            "{}",
+                            t!("monitor.failed_to_press_enter_floating", error = e)
+                        );
                     } else {
                         log::info!("{}", t!("monitor.auto_pressed_enter_floating"));
                     }

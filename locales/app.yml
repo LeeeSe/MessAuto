@@ -331,18 +331,30 @@ updater:
   installing_update:
     en: Installing update...
     zh-CN: 正在安装更新...
-  new_version_downloaded:
-    en: New version %{version} has been downloaded. Install now?
-    zh-CN: 新版本 %{version} 已下载完成。是否现在安装更新？
+  new_version_installed:
+    en: New version %{version} has been installed. Restart now?
+    zh-CN: 新版本 %{version} 已准备就绪。是否立即重启？
+  choose_restart_manually:
+    en: Choose to restart manually later
+    zh-CN: 可选择稍后自行重启
   update_available:
-    en: MessAuto Update Available
-    zh-CN: MessAuto 更新可用
-  user_chosen_install:
-    en: User chose to install update
-    zh-CN: 用户选择安装更新
-  user_chosen_later:
-    en: User chose to install update later
-    zh-CN: 用户选择稍后安装更新
-  install:
-    en: Install
-    zh-CN: 安装
+    en: Update Available
+    zh-CN: 可用更新
+  user_chosen_restart:
+    en: User chose to restart
+    zh-CN: 用户选择重启
+  user_chosen_restart_later:
+    en: User chose to restart later
+    zh-CN: 用户选择稍后重启
+  restart_now:
+    en: Restart Now
+    zh-CN: 立即重启
+  restart_later:
+    en: Restart Later
+    zh-CN: 稍后重启
+  failed_to_restart:
+    en: Failed to restart application
+    zh-CN: 重启应用失败
+  app_restarted:
+    en: Application restarted successfully
+    zh-CN: 应用已成功重启
