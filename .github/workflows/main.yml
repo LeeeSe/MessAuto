@@ -70,10 +70,9 @@ jobs:
         run: |
           VERSION=${{ steps.package_version.outputs.version }}
           echo "Creating aarch64 .tar.gz archive..."
-          # -C 参数可以让我们在指定的目录中执行压缩，避免在归档中包含多余的父目录
-          tar -czf "MessAuto_${VERSION}_aarch64.app.tar.gz" -C ./target/release/MessAuto.app
+          tar -czf "MessAuto_${VERSION}_aarch64.app.tar.gz" -C ./target/release/MessAuto.app .
           echo "Creating x86_64 .tar.gz archive..."
-          tar -czf "MessAuto_${VERSION}_x64.app.tar.gz" -C ./target/x86_64-apple-darwin/release/MessAuto.app
+          tar -czf "MessAuto_${VERSION}_x64.app.tar.gz" -C ./target/x86_64-apple-darwin/release/MessAuto.app .
 
       - name: Sign Archives for Updater
         run: |
