@@ -55,8 +55,9 @@ https://github.com/LeeeSe/MessAuto/assets/44465325/33dcec87-61c4-4510-a87c-ef43e
 
 ## 常见问题
 ### 无法打开，因为无法验证开发者
-1. 打开访达并找到 MessAuto.app，右键打开
-2. 终端执行 `sudo spctl --master-disable`；设置->隐私与安全性->允许以下来源的应用程序->任何来源。此选项一劳永逸
+两种解决方案，推荐第二种
+- 打开访达并找到 MessAuto.app，右键打开
+- 终端执行 `sudo spctl --master-disable`；设置->隐私与安全性->允许以下来源的应用程序->任何来源
 
 ## TODO
 
