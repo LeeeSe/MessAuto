@@ -8,7 +8,6 @@ ctrlc = "3.4.5"
 eframe = "0.32.0"
 image = "0.25.5"
 notify = "6.1.1"
-regex = "1.11.1"
 tokio = { version = "1.44.1", features = ["full"] }
 tray-icon = "0.21.1"
 winit = "0.30.12"
@@ -20,13 +19,13 @@ toml = "0.8"
 dirs = "5.0"
 enigo = "0.5.0"
 chrono = "0.4.41"
-regex-lite = "0.1.6"
 email = "0.0.21"
 rust-i18n = "3.1.5"
 auto-launch = "0.5.0"
 cargo-packager-updater = { git = "https://github.com/LeeeSe/cargo-packager.git" }
 sys-locale = "0.3.2"
 sysproxy = "0.3.0"
+fancy-regex = "0.16.1"
 
 [package.metadata.packager]
 product-name = "MessAuto"

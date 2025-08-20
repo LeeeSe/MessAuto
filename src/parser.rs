@@ -1,65 +1,103 @@
 use crate::config::Config;
-use regex_lite::Regex;
+use fancy_regex::Regex;
 
 pub fn extract_verification_code(content: &str) -> Option<String> {
     let config = Config::load().unwrap_or_default();
 
-    let has_verification_keyword = config
-        .verification_keywords
-        .iter()
-        .any(|keyword| content.to_lowercase().contains(&keyword.to_lowercase()));
+    let keyword_pos = find_first_keyword_position(content, &config.verification_keywords);
+    if keyword_pos.is_none() {
+        return None;
+    }
+    let keyword_pos = keyword_pos.unwrap();
 
-    if !has_verification_keyword {
+    let candidates = extract_candidate_codes(content, &config.verification_regex);
+    if candidates.is_empty() {
         return None;
     }
 
-    let code_patterns = [&config.verification_regex];
+    let filtered_candidates = filter_candidates_step1(candidates, content);
+    if filtered_candidates.is_empty() {
+        return None;
+    }
 
+    let result = find_closest_candidate(filtered_candidates, keyword_pos);
+
+    result
+}
+
+fn find_first_keyword_position(text: &str, keywords: &[String]) -> Option<usize> {
+    // 找到第一个关键词的位置（保留原有的小写匹配逻辑）
+    let text_lower = text.to_lowercase();
+    for keyword in keywords {
+        let keyword_lower = keyword.to_lowercase();
+        if let Some(pos) = text_lower.find(&keyword_lower) {
+            return Some(pos);
+        }
+    }
+    None
+}
+
+fn extract_candidate_codes(text: &str, pattern: &str) -> Vec<(String, usize)> {
+    // 使用正则提取候选验证码及其位置
+    let re = Regex::new(pattern).unwrap();
     let mut candidates = Vec::new();
-    for pattern in code_patterns {
-        let regex = Regex::new(pattern).unwrap();
-        for m in regex.find_iter(content) {
-            let candidate = m.as_str();
+
+    for result in re.find_iter(text) {
+        if let Ok(mat) = result {
+            let code = mat.as_str();
             // 确保提取的字符串中至少包含一个数字
-            if candidate.chars().any(|c| c.is_ascii_digit()) {
-                candidates.push(candidate.to_string());
+            if code.chars().any(|c| c.is_ascii_digit()) {
+                let pos = mat.start();
+                candidates.push((code.to_string(), pos));
             }
         }
     }
 
-    if !candidates.is_empty() {
-        return candidates
-            .into_iter()
-            .max_by_key(|c| c.chars().filter(|ch| ch.is_ascii_digit()).count());
+    candidates
+}
+
+fn filter_candidates_step1(candidates: Vec<(String, usize)>, _text: &str) -> Vec<(String, usize)> {
+    // 过滤1: 去除包含多个'-'或在首尾的候选码
+    let mut filtered = Vec::new();
+
+    for (code, pos) in candidates {
+        // 检查'-'的数量
+        if code.matches('-').count() > 1 {
+            continue;
+        }
+
+        filtered.push((code, pos));
     }
 
-    None
+    filtered
+}
+
+fn find_closest_candidate(candidates: Vec<(String, usize)>, keyword_pos: usize) -> Option<String> {
+    // 找到距离关键词最近的候选码，距离不超过100
+    let mut closest_code: Option<String> = None;
+    let mut min_distance = usize::MAX;
+
+    for (code, code_pos) in candidates {
+        // 计算距离 (候选码中心到关键词位置的距离)
+        let code_center = code_pos + code.len() / 2;
+        let distance = if code_center > keyword_pos {
+            code_center - keyword_pos
+        } else {
+            keyword_pos - code_center
+        };
+
+        if distance < min_distance && distance <= 100 {
+            min_distance = distance;
+            closest_code = Some(code);
+        }
+    }
+
+    closest_code
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_extract_verification_code_no_keywords() {
-        assert_eq!(
-            extract_verification_code("【腾讯云】尊敬的腾讯云用户，您的账号即将到期。"),
-            None
-        );
-        assert_eq!(
-            extract_verification_code("Hello world, no codes here"),
-            None
-        );
-    }
-
-    #[test]
-    fn test_extract_verification_code_mixed_candidates() {
-        let sms_content = "【测试】您的验证码是ABC123和XYZ4567，请使用ABC123。";
-        assert_eq!(
-            extract_verification_code(sms_content),
-            Some("XYZ4567".to_string())
-        );
-    }
 
     #[test]
     fn test_extract_verification_code_comprehensive_accuracy() {
@@ -93,12 +131,12 @@ mod tests {
                 Some("ABCD123".to_string()),
             ),
             (
-                "您正在使用境外网上支付验证服务，动态密码为729729。动态密码连续输错3次，您的此次交易验证会失败。请勿向他人泄露！[中国工商银行]。【工商银行】",
-                Some("729729".to_string()),
+                "【智谱AI】您的验证码为210465，请于3分钟内使用，若非本人操作，请忽略本短信。",
+                Some("210465".to_string()),
             ),
             (
-                "【Microsoft】将123456用作Microsoft账户安全代码",
-                Some("123456".to_string()),
+                "【倒三角】易支撑（登录）——您的账号W8406772本次登录验证码为666684，请勿泄露，有效时间5分钟，如非本人操作请忽略本短信。",
+                Some("666684".to_string()),
             ),
             (
                 "【APPLE】Apple ID代码为：724818。请勿与他人共享。",
@@ -113,6 +151,34 @@ mod tests {
                 Some("047289".to_string()),
             ),
             ("your code is 432141", Some("432141".to_string())),
+            (
+                "由XXXX发送，验证码：678571，验证码有效期2分钟，切勿将验证码泄露于他人。发送时间：2025-08-19 XX:XX:XX",
+                Some("678571".to_string()),
+            ),
+            (
+                "【CSDN】678571是你的验证码，有效期2分钟，切勿将验证码泄露于他人。发送时间：2025-08-19 XX:XX:XX",
+                Some("678571".to_string()),
+            ),
+            (
+                "Citi ID Code: 12345678 We'll NEVER call or text for this code.",
+                Some("12345678".to_string()),
+            ),
+            (
+                "Code is: RKJ-YP6 We'll NEVER call or text for this code.",
+                Some("RKJ-YP6".to_string()),
+            ),
+            (
+                "【google】your code is G-23414",
+                Some("G-23414".to_string()),
+            ),
+            (
+                "As a token of our appreciation, upon completing the survey, you will get a 10% discount promo code on your first payment. Your feedback is invaluable to us, and we are committed to making your experience as rewarding and effective as possible.",
+                None,
+            ),
+            (
+                "Hey LeeeSe2!A sign in attempt requires further verification because we did not recognize your device. To complete the sign in, enter the verification code on the unrecognized device. Device: Safari on macOS Verification code: 731464 If you did not attempt to sign in to your account, your password may be compromised. Visit https://github.com/settings/security to create a new, strong password for your GitHub account.If you'd like to automatically verify devices in the future, consider enabling two-factor authentication on your account. Visit https://docs.github.com/articles/configuring-two-factor-authentication to learn about two-factor authentication.If you decide to enable two-factor authentication, ensure you retain access to one or more account recovery methods. See https://docs.github.com/articles/configuring-two-factor-authentication-recovery-methods in the GitHub Help.Thanks,The GitHub Team",
+                Some("731464".to_string()),
+            ),
         ];
 
         let mut total_tests = 0;

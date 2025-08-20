@@ -76,15 +76,18 @@ impl Default for Config {
             listen_message: true,
             floating_window: true,
             verification_keywords: vec![
-                "验证".to_string(),
+                "验证码".to_string(),
                 "动态密码".to_string(),
-                "verification".to_string(),
-                "code".to_string(),
-                "captcha".to_string(),
-                "인증".to_string(),
+                "验证".to_string(),
                 "代码".to_string(),
+                "verification code".to_string(),
+                "captcha code".to_string(),
+                "verification".to_string(),
+                "captcha".to_string(),
+                "code".to_string(),
+                "인증".to_string(),
             ],
-            verification_regex: r"\b[a-zA-Z0-9][a-zA-Z0-9-]{2,6}[a-zA-Z0-9]\b".to_string(),
+            verification_regex: r"(?=[a-zA-Z0-9-]*[0-9])[a-zA-Z0-9-]{4,8}".to_string(),
             version: 1,
         }
     }
@@ -173,18 +176,21 @@ impl Config {
             floating_window: legacy.floating_window.unwrap_or(true),
             verification_keywords: legacy.verification_keywords.unwrap_or_else(|| {
                 vec![
-                    "验证".to_string(),
+                    "验证码".to_string(),
                     "动态密码".to_string(),
+                    "验证".to_string(),
+                    "代码".to_string(),
+                    "verification code".to_string(),
+                    "captcha code".to_string(),
                     "verification".to_string(),
+                    "captcha".to_string(),
                     "code".to_string(),
                     "인증".to_string(),
-                    "代码".to_string(),
-                    "captcha".to_string(),
                 ]
             }),
             verification_regex: legacy
                 .verification_regex
-                .unwrap_or_else(|| r"\b[a-zA-Z0-9][a-zA-Z0-9-]{2,6}[a-zA-Z0-9]\b".to_string()),
+                .unwrap_or_else(|| r"(?=[a-zA-Z0-9-]*[0-9])[a-zA-Z0-9-]{4,8}".to_string()),
             version: 1,
         })
     }

@@ -1,14 +1,14 @@
+use log::{debug, error, info, warn};
+use notify::{EventKind, RecursiveMode};
+use std::env;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::env;
-use notify::{EventKind, RecursiveMode};
-use log::{info, error, debug, warn};
 
-use crate::config::Config;
-use crate::parser;
-use crate::ipc;
-use crate::clipboard;
 use super::watcher::FileProcessor;
+use crate::clipboard;
+use crate::config::Config;
+use crate::ipc;
+use crate::parser;
 
 // 跟踪最后处理的消息ID
 static LAST_PROCESSED_ROWID: Mutex<i64> = Mutex::new(0);
@@ -62,9 +62,17 @@ impl FileProcessor for MessageProcessor {
         RecursiveMode::Recursive
     }
 
-    fn process_file(&self, path: &Path, event_kind: &EventKind) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    fn process_file(
+        &self,
+        path: &Path,
+        event_kind: &EventKind,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         debug!("process_file_event_kind: {:?}", event_kind);
-        if event_kind != &EventKind::Modify(notify::event::ModifyKind::Metadata(notify::event::MetadataKind::Any)) {
+        if event_kind
+            != &EventKind::Modify(notify::event::ModifyKind::Metadata(
+                notify::event::MetadataKind::Any,
+            ))
+        {
             return Ok(());
         }
 
@@ -111,9 +119,9 @@ impl FileProcessor for MessageProcessor {
                 debug!("Processing message {}: {}", i, message);
                 if let Some(code) = parser::extract_verification_code(message) {
                     info!("Found verification code in message: {}", code);
-                    
+
                     let config = Config::load().unwrap_or_default();
-                    
+
                     // 如果悬浮窗启用，只显示悬浮窗，不自动输入
                     if config.floating_window {
                         match ipc::spawn_floating_window(&code) {
@@ -128,7 +136,7 @@ impl FileProcessor for MessageProcessor {
                                 error!("Failed to direct input verification code: {}", e);
                             } else {
                                 info!("Direct input verification code: {}", code);
-                                
+
                                 // 如果 auto_enter 启用，在直接输入后立即按下回车键
                                 if config.auto_enter {
                                     if let Err(e) = clipboard::press_enter() {
@@ -144,14 +152,14 @@ impl FileProcessor for MessageProcessor {
                                 error!("Failed to copy verification code to clipboard: {}", e);
                             } else {
                                 info!("Auto-copied verification code to clipboard: {}", code);
-                                
+
                                 // 如果 auto_paste 启用，自动粘贴
                                 if config.auto_paste {
                                     if let Err(e) = clipboard::auto_paste(false, &code) {
                                         error!("Failed to auto-paste verification code: {}", e);
                                     } else {
                                         info!("Auto-pasted verification code: {}", code);
-                                        
+
                                         // 如果 auto_enter 启用，在自动粘贴后立即按下回车键
                                         if config.auto_enter {
                                             if let Err(e) = clipboard::press_enter() {
