@@ -160,6 +160,9 @@ monitor:
   no_verification_code_email:
     en: No verification code found in email
     zh-CN: 邮件中未找到验证码
+  no_plain_text_found:
+    en: No plain text content found in email
+    zh-CN: 邮件中未找到纯文本内容
   failed_to_press_enter_floating:
     en: Failed to press enter key:%{error}
     zh-CN: 按下回车键失败:%{error}

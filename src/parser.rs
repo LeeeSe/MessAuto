@@ -179,6 +179,23 @@ mod tests {
                 "Hey LeeeSe2!A sign in attempt requires further verification because we did not recognize your device. To complete the sign in, enter the verification code on the unrecognized device. Device: Safari on macOS Verification code: 731464 If you did not attempt to sign in to your account, your password may be compromised. Visit https://github.com/settings/security to create a new, strong password for your GitHub account.If you'd like to automatically verify devices in the future, consider enabling two-factor authentication on your account. Visit https://docs.github.com/articles/configuring-two-factor-authentication to learn about two-factor authentication.If you decide to enable two-factor authentication, ensure you retain access to one or more account recovery methods. See https://docs.github.com/articles/configuring-two-factor-authentication-recovery-methods in the GitHub Help.Thanks,The GitHub Team",
                 Some("731464".to_string()),
             ),
+            (
+                "[2025-08-21 00:47:22.775 INFO messauto::monitor::email] 邮件内容:------=_Part_153214_622935313.1755708437680
+                Content-Type: text/plain; charset=GBK
+                Content-Transfer-Encoding: 7bit
+
+                code 723333
+                ------=_Part_153214_622935313.1755708437680
+                Content-Type: text/html; charset=GBK
+                Content-Transfer-Encoding: 7bit
+
+                ------=_Part_153214_622935313.1755708437680
+                Content-Type: text/html; charset=UTF-8
+                Content-Transfer-Encoding: quoted-printable
+
+                <html>...</html>",
+                Some("723333".to_string())
+            )
         ];
 
         let mut total_tests = 0;
