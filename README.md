@@ -32,13 +32,13 @@ https://github.com/LeeeSe/MessAuto/assets/44465325/6e0aca37-377f-463b-b27e-a12ff
 https://github.com/LeeeSe/MessAuto/assets/44465325/33dcec87-61c4-4510-a87c-ef43e69c4e9d
 
 ## 使用方法
-### 1.下载并安装
+### 下载并安装
 从 release [下载](https://github.com/LeeeSe/MessAuto/releases/latest)
-### 2.授权
+### 授权
 - 完全磁盘访问权限：设置 -> 隐私与安全性 -> 完全磁盘访问权限
 - 辅助功能权限：设置 -> 隐私与安全性 -> 辅助功能权限
-### 3.将信息和邮件 App 常驻后台
-常驻后台可以缩短消息从 iPhone 同步到 mac 所花时间
+### 将信息和邮件 App 常驻后台
+常驻后台可以缩短消息从 iPhone 同步到 Mac 所花时间
 
 ## 配置说明
 - 自动粘贴：将剪贴板中的验证码模拟键盘自动粘贴到输入框内
