@@ -1,5 +1,5 @@
 use crate::notification;
-use cargo_packager_updater::{Config, Update, check_update, semver::Version};
+use cargo_packager_updater::{Config, Update, UpdaterBuilder, semver::Version};
 use chrono::{DateTime, Utc};
 use dirs;
 use log::{error, info, warn};
@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::thread;
 use std::time::Duration;
+use sysproxy::Sysproxy;
 
 fn get_current_arch() -> &'static str {
     if cfg!(target_arch = "aarch64") {
@@ -120,6 +121,30 @@ fn should_check_for_updates() -> bool {
     }
 }
 
+fn get_system_proxy_url() -> Option<String> {
+    match Sysproxy::get_system_proxy() {
+        Ok(proxy) if proxy.enable => {
+            let proxy_url = format!("http://{}:{}", proxy.host, proxy.port);
+            info!(
+                "{}",
+                t!("updater.using_system_proxy", proxy_url = &proxy_url)
+            );
+            Some(proxy_url)
+        }
+        Ok(_) => {
+            info!("{}", t!("updater.no_system_proxy_found"));
+            None
+        }
+        Err(e) => {
+            warn!(
+                "{}",
+                t!("updater.failed_to_get_proxy", error = e.to_string())
+            );
+            None
+        }
+    }
+}
+
 fn perform_update_check() {
     info!("{}", t!("updater.checking_updates"));
     info!("{}", t!("updater.current_arch", arch = get_current_arch()));
@@ -143,7 +168,19 @@ fn perform_update_check() {
         ..Default::default()
     };
 
-    match check_update(current_version, config) {
+    let proxy_url = get_system_proxy_url();
+
+    let updater = match proxy_url {
+        Some(url) => UpdaterBuilder::new(current_version, config)
+            .proxy(&url)
+            .build()
+            .unwrap(),
+        None => UpdaterBuilder::new(current_version, config)
+            .build()
+            .unwrap(),
+    };
+
+    match updater.check() {
         Ok(Some(update)) => {
             info!(
                 "{}",
