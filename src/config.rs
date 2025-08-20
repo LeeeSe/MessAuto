@@ -1,3 +1,4 @@
+use chrono::Local;
 use rust_i18n::t;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -22,13 +23,13 @@ impl Write for LogTarget {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         // Write to stdout
         let stdout_result = io::stdout().write(buf);
-        
+
         // Write to file
         let file_result = {
             let mut file = self.file.lock().unwrap();
             file.write(buf)
         };
-        
+
         // Return the result of stdout write (or file write if stdout failed)
         stdout_result.or(file_result)
     }
@@ -36,13 +37,13 @@ impl Write for LogTarget {
     fn flush(&mut self) -> io::Result<()> {
         // Flush stdout
         let stdout_result = io::stdout().flush();
-        
+
         // Flush file
         let file_result = {
             let mut file = self.file.lock().unwrap();
             file.flush()
         };
-        
+
         // Return the result of stdout flush (or file flush if stdout failed)
         stdout_result.or(file_result)
     }
@@ -207,6 +208,17 @@ impl Config {
         env_logger::Builder::from_default_env()
             .filter_level(log::LevelFilter::Info)
             .target(env_logger::Target::Pipe(Box::new(LogTarget::new(log_file))))
+            .format(|buf, record| {
+                let local_time = Local::now();
+                writeln!(
+                    buf,
+                    "[{} {} {}] {}",
+                    local_time.format("%Y-%m-%d %H:%M:%S%.3f"),
+                    record.level(),
+                    record.target(),
+                    record.args()
+                )
+            })
             .init();
 
         log::info!("{}", t!("logging.initialized"));

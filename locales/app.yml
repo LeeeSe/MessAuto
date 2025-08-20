@@ -319,6 +319,9 @@ updater:
   update_check_failed:
     en: Failed to check for updates:%{error}
     zh-CN: 检查更新失败:%{error}
+  auto_check_triggered:
+    en: Automatic update check triggered
+    zh-CN: 自动更新检查已触发
   already_up_to_date:
     en: Application is already up to date.
     zh-CN: 应用已是最新版本。
@@ -358,3 +361,9 @@ updater:
   app_restarted:
     en: Application restarted successfully
     zh-CN: 应用已成功重启
+  starting_auto_update_checker:
+    en: Starting auto update checker...
+    zh-CN: 启动自动更新检查...
+  duration_since_last_check:
+    en: Duration since last check:%{hours} hours
+    zh-CN: 距离上次检查更新已过去 %{hours} 小时

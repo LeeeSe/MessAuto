@@ -1,10 +1,16 @@
 use crate::notification;
 use cargo_packager_updater::{Config, Update, check_update, semver::Version};
-use log::{error, info};
+use chrono::{DateTime, Utc};
+use dirs;
+use log::{error, info, warn};
 use rust_i18n::t;
+use serde::{Deserialize, Serialize};
 use std::env;
+use std::fs;
+use std::path::PathBuf;
 use std::process::{Command, exit};
 use std::thread;
+use std::time::Duration;
 
 fn get_current_arch() -> &'static str {
     if cfg!(target_arch = "aarch64") {
@@ -30,71 +36,172 @@ const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const PUB_KEY: &str = "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY2NkEyQTU4M0Y3RTM3RkUKUldUK04zNC9XQ3BxWmhvQi84YkVYQUpOa2N5WWFDM2lhRXh5dDE0VE85SlRNejJ5VVJBR2JvYjEK";
 
-pub fn check_for_updates() {
-    thread::spawn(move || {
-        info!("{}", t!("updater.checking_updates"));
-        info!("{}", t!("updater.current_arch", arch = get_current_arch()));
+#[derive(Serialize, Deserialize)]
+struct UpdateCheckState {
+    last_check_time: String,
+}
 
-        let current_version = match Version::parse(CURRENT_VERSION) {
-            Ok(version) => version,
+fn get_update_state_path() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_default()
+        .join("messauto")
+        .join("last_update_check.toml")
+}
+
+fn load_last_check_time() -> Option<DateTime<Utc>> {
+    let path = get_update_state_path();
+    if !path.exists() {
+        return None;
+    }
+
+    match fs::read_to_string(&path) {
+        Ok(content) => match toml::from_str::<UpdateCheckState>(&content) {
+            Ok(state) => match DateTime::parse_from_rfc3339(&state.last_check_time) {
+                Ok(dt) => Some(dt.with_timezone(&Utc)),
+                Err(e) => {
+                    warn!("Failed to parse last check time: {}", e);
+                    None
+                }
+            },
             Err(e) => {
-                error!(
-                    "{}",
-                    t!("updater.failed_to_parse_version", error = e.to_string())
-                );
-                return;
+                warn!("Failed to parse update state file: {}", e);
+                None
             }
-        };
+        },
+        Err(e) => {
+            warn!("Failed to read update state file: {}", e);
+            None
+        }
+    }
+}
 
-        let endpoint = get_endpoint();
+fn save_last_check_time(time: DateTime<Utc>) {
+    let path = get_update_state_path();
+    if let Some(parent) = path.parent() {
+        if let Err(e) = fs::create_dir_all(parent) {
+            warn!("Failed to create config directory: {}", e);
+            return;
+        }
+    }
 
-        let config = Config {
-            pubkey: PUB_KEY.into(),
-            endpoints: vec![endpoint.parse().unwrap()],
-            ..Default::default()
-        };
+    let state = UpdateCheckState {
+        last_check_time: time.to_rfc3339(),
+    };
 
-        match check_update(current_version, config) {
-            Ok(Some(update)) => {
-                info!(
-                    "{}",
-                    t!(
-                        "updater.new_version_found",
-                        version = update.version.to_string()
-                    )
-                );
-                match download_update(update) {
-                    Ok((update_obj, update_bytes)) => {
-                        info!("{}", t!("updater.update_download_complete"));
-                        if let Err(e) = install_update(update_obj.clone(), update_bytes) {
-                            error!(
-                                "{}",
-                                t!("updater.update_check_failed", error = e.to_string())
-                            );
-                        }
-                        if show_restart_notification(&update_obj.version) {
-                            restart_app();
-                        } else {
-                            info!("{}", t!("updater.user_canceled_update"));
-                        }
-                    }
-                    Err(e) => {
+    match toml::to_string(&state) {
+        Ok(content) => {
+            if let Err(e) = fs::write(&path, content) {
+                warn!("Failed to save update state: {}", e);
+            }
+        }
+        Err(e) => {
+            warn!("Failed to serialize update state: {}", e);
+        }
+    }
+}
+
+fn should_check_for_updates() -> bool {
+    let now = Utc::now();
+    let last_check = load_last_check_time();
+
+    match last_check {
+        Some(last) => {
+            let duration_since_last = now - last;
+            info!(
+                "{}",
+                t!(
+                    "updater.duration_since_last_check",
+                    hours = duration_since_last.num_hours()
+                )
+            );
+            duration_since_last.num_hours() >= 24
+        }
+        None => true,
+    }
+}
+
+fn perform_update_check() {
+    info!("{}", t!("updater.checking_updates"));
+    info!("{}", t!("updater.current_arch", arch = get_current_arch()));
+
+    let current_version = match Version::parse(CURRENT_VERSION) {
+        Ok(version) => version,
+        Err(e) => {
+            error!(
+                "{}",
+                t!("updater.failed_to_parse_version", error = e.to_string())
+            );
+            return;
+        }
+    };
+
+    let endpoint = get_endpoint();
+
+    let config = Config {
+        pubkey: PUB_KEY.into(),
+        endpoints: vec![endpoint.parse().unwrap()],
+        ..Default::default()
+    };
+
+    match check_update(current_version, config) {
+        Ok(Some(update)) => {
+            info!(
+                "{}",
+                t!(
+                    "updater.new_version_found",
+                    version = update.version.to_string()
+                )
+            );
+            match download_update(update) {
+                Ok((update_obj, update_bytes)) => {
+                    info!("{}", t!("updater.update_download_complete"));
+                    if let Err(e) = install_update(update_obj.clone(), update_bytes) {
                         error!(
                             "{}",
-                            t!("updater.update_download_failed", error = e.to_string())
+                            t!("updater.update_check_failed", error = e.to_string())
                         );
                     }
+                    if show_restart_notification(&update_obj.version) {
+                        restart_app();
+                    } else {
+                        info!("{}", t!("updater.user_canceled_update"));
+                    }
+                }
+                Err(e) => {
+                    error!(
+                        "{}",
+                        t!("updater.update_download_failed", error = e.to_string())
+                    );
                 }
             }
-            Ok(None) => {
-                info!("{}", t!("updater.already_up_to_date"));
+        }
+        Ok(None) => {
+            info!("{}", t!("updater.already_up_to_date"));
+        }
+        Err(e) => {
+            error!(
+                "{}",
+                t!("updater.update_check_failed", error = e.to_string())
+            );
+        }
+    }
+}
+
+pub fn check_for_updates() {
+    thread::spawn(move || {
+        perform_update_check();
+    });
+}
+
+pub fn start_auto_update_checker() {
+    thread::spawn(move || {
+        loop {
+            if should_check_for_updates() {
+                info!("{}", t!("updater.auto_check_triggered"));
+                perform_update_check();
+                save_last_check_time(Utc::now());
             }
-            Err(e) => {
-                error!(
-                    "{}",
-                    t!("updater.update_check_failed", error = e.to_string())
-                );
-            }
+            thread::sleep(Duration::from_secs(300)); // 每5分钟检查一次
         }
     });
 }

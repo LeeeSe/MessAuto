@@ -23,9 +23,7 @@ use tokio::runtime::Runtime;
 rust_i18n::i18n!("./locales");
 
 fn main() {
-    // Detect and set system locale
     let system_locale = language::detect_system_locale();
-    log::info!("语言: {}", system_locale);
     rust_i18n::set_locale(&system_locale);
     println!("=== {} ===", t!("app.name"));
 
@@ -54,6 +52,9 @@ fn main() {
     if floating_window::maybe_start_floating_window() {
         return;
     }
+
+    info!("{}", t!("monitor.starting_auto_update_checker"));
+    updater::start_auto_update_checker();
 
     let test_mode = env::args().any(|arg| arg == "--test");
 
@@ -97,8 +98,7 @@ fn main() {
         info!("{}", t!("tray.initializing_tray_icon"));
         info!("{}", t!("tray.about_to_run_tray_application"));
 
-        // --- 核心改动：启动Actor并获取Sender ---
-        let _guard = rt.enter(); // 确保在正确的tokio上下文中
+        let _guard = rt.enter();
         let monitor_sender = monitor::start_monitoring_actor();
 
         tray::run_tray_application(
