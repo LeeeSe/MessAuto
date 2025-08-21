@@ -40,6 +40,7 @@ pub fn copy_to_clipboard(text: &str) -> Result<(), String> {
     }
 }
 
+#[allow(dead_code)]
 pub fn copy_text_with_egui(ctx: &Context, text: &str) {
     ctx.copy_text(text.to_string());
 }

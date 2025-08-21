@@ -6,5 +6,6 @@ pub enum MonitorCommand {
     StopMessageMonitoring,
     StartEmailMonitoring,
     StopEmailMonitoring,
+    #[allow(dead_code)]
     GetStatus(oneshot::Sender<String>),
 }

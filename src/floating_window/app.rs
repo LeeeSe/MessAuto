@@ -141,10 +141,10 @@ impl VerificationCodeApp {
 
     fn draw_content(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
         let content_area = ui.max_rect().translate(CONTENT_OFFSET);
-        let mut content_ui = ui.child_ui(
-            content_area,
-            egui::Layout::top_down(egui::Align::Center),
-            None,
+        let mut content_ui = ui.new_child(
+            egui::UiBuilder::new()
+                .max_rect(content_area)
+                .layout(egui::Layout::top_down(egui::Align::Center)),
         );
 
         content_ui.add_space(5.0);
