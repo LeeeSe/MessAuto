@@ -35,3 +35,4 @@ icons = ["resources/icon_256.png"]
 [package.metadata.packager.macos]
 background-app = true
 signing-identity = "MessAuto_SC"
+version = "1.1.5"
