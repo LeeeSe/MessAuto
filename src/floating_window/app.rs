@@ -176,8 +176,7 @@ impl VerificationCodeApp {
                     }
                 }
             }
-            
-            // 执行完动作后标记窗口需要关闭
+
             self.should_close = true;
         }
     }
