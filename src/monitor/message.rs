@@ -124,7 +124,7 @@ impl FileProcessor for MessageProcessor {
 
                     // 如果悬浮窗启用，只显示悬浮窗，不自动输入
                     if config.floating_window {
-                        match ipc::spawn_floating_window(&code) {
+                        match ipc::spawn_floating_window(&code, "iMessage") {
                             Ok(_) => debug!("Floating window spawned successfully"),
                             Err(e) => error!("Failed to spawn floating window: {}", e),
                         }

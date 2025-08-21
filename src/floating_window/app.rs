@@ -14,20 +14,22 @@ const CONTENT_OFFSET: egui::Vec2 = egui::Vec2::new(2.0, 2.0);
 
 pub struct VerificationCodeApp {
     code: String,
+    source: String,
     created_at: Instant,
     lifetime: Duration,
 }
 
 impl VerificationCodeApp {
-    pub fn new(code: String) -> Self {
+    pub fn new(code: String, source: String) -> Self {
         Self {
             code,
+            source,
             created_at: Instant::now(),
             lifetime: Duration::from_secs(600),
         }
     }
 
-    pub fn run(code: String) {
+    pub fn run(code: String, source: String) {
         let options = NativeOptions {
             viewport: egui::ViewportBuilder::default()
                 .with_inner_size(WINDOW_SIZE)
@@ -70,7 +72,7 @@ impl VerificationCodeApp {
                     .insert(0, "PingFang SC".to_owned());
 
                 cc.egui_ctx.set_fonts(fonts);
-                Ok(Box::new(Self::new(code)))
+                Ok(Box::new(Self::new(code, source)))
             }),
         )
         .unwrap();
@@ -144,12 +146,18 @@ impl VerificationCodeApp {
         );
 
         content_ui.add_space(5.0);
-        content_ui.add(egui::Label::new("1.click input box").selectable(false));
-        content_ui.add(egui::Label::new("2.click button below").selectable(false));
+        content_ui.add(egui::Label::new(t!("floating_window.click_input_box")).selectable(false));
+        content_ui
+            .add(egui::Label::new(t!("floating_window.click_button_below")).selectable(false));
 
         let btn_response = self.custom_button(
             &mut content_ui,
-            format!("Code: {} \nFrom: iMessage", self.code).as_str(),
+            format!(
+                "{}\n{}",
+                t!("floating_window.code", code = self.code),
+                t!("floating_window.from", source = self.source)
+            )
+            .as_str(),
         );
 
         if btn_response.clicked() {

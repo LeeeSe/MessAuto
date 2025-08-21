@@ -370,3 +370,17 @@ updater:
   duration_since_last_check:
     en: Duration since last check:%{hours} hours
     zh-CN: 距离上次检查更新已过去 %{hours} 小时
+
+floating_window:
+  click_input_box:
+    en: 1.click input box
+    zh-CN: 1.点击输入框
+  click_button_below:
+    en: 2.click button below
+    zh-CN: 2.点击下方按钮
+  code:
+    en: Code:%{code}
+    zh-CN: 验证码:%{code}
+  from:
+    en: From:%{source}
+    zh-CN: 来自:%{source}

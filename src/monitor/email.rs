@@ -195,7 +195,7 @@ impl FileProcessor for EmailProcessor {
             let config = Config::load().unwrap_or_default();
 
             if config.floating_window {
-                match ipc::spawn_floating_window(&code) {
+                match ipc::spawn_floating_window(&code, "Mail") {
                     Ok(_) => debug!("Floating window spawned successfully"),
                     Err(e) => error!("Failed to spawn floating window: {}", e),
                 }

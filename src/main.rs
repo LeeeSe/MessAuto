@@ -61,7 +61,7 @@ fn main() {
     if test_mode {
         sleep(Duration::from_secs(2));
         info!("{}", t!("monitor.starting_test_verification_window"));
-        if let Ok(child) = ipc::spawn_floating_window("123456") {
+        if let Ok(child) = ipc::spawn_floating_window("123456", "Test") {
             info!(
                 "{}",
                 t!(
@@ -72,7 +72,7 @@ fn main() {
 
             thread::sleep(Duration::from_secs(5));
 
-            if let Ok(child2) = ipc::spawn_floating_window("654321") {
+            if let Ok(child2) = ipc::spawn_floating_window("654321", "Test") {
                 info!(
                     "{}",
                     t!(
