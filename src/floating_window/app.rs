@@ -17,6 +17,7 @@ pub struct VerificationCodeApp {
     source: String,
     created_at: Instant,
     lifetime: Duration,
+    should_close: bool,
 }
 
 impl VerificationCodeApp {
@@ -26,6 +27,7 @@ impl VerificationCodeApp {
             source,
             created_at: Instant::now(),
             lifetime: Duration::from_secs(600),
+            should_close: false,
         }
     }
 
@@ -137,7 +139,7 @@ impl VerificationCodeApp {
         }
     }
 
-    fn draw_content(&self, ui: &mut egui::Ui, ctx: &egui::Context) {
+    fn draw_content(&mut self, ui: &mut egui::Ui, _ctx: &egui::Context) {
         let content_area = ui.max_rect().translate(CONTENT_OFFSET);
         let mut content_ui = ui.child_ui(
             content_area,
@@ -152,12 +154,11 @@ impl VerificationCodeApp {
 
         let btn_response = self.custom_button(
             &mut content_ui,
-            format!(
+            &format!(
                 "{}\n{}",
                 t!("floating_window.code", code = self.code),
                 t!("floating_window.from", source = self.source)
-            )
-            .as_str(),
+            ),
         );
 
         if btn_response.clicked() {
@@ -175,6 +176,9 @@ impl VerificationCodeApp {
                     }
                 }
             }
+            
+            // 执行完动作后标记窗口需要关闭
+            self.should_close = true;
         }
     }
 
@@ -239,7 +243,7 @@ impl VerificationCodeApp {
 
 impl App for VerificationCodeApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        if self.created_at.elapsed() > self.lifetime {
+        if self.should_close || self.created_at.elapsed() > self.lifetime {
             let ctx_clone = ctx.clone();
             std::thread::spawn(move || {
                 ctx_clone.send_viewport_cmd(egui::ViewportCommand::Close);
