@@ -4,11 +4,11 @@ use fancy_regex::Regex;
 pub fn extract_verification_code(content: &str) -> Option<String> {
     let config = Config::load().unwrap_or_default();
 
-    let keyword_pos = find_first_keyword_position(content, &config.verification_keywords);
-    if keyword_pos.is_none() {
+    let keyword_bounds = find_first_keyword_position(content, &config.verification_keywords);
+    if keyword_bounds.is_none() {
         return None;
     }
-    let keyword_pos = keyword_pos.unwrap();
+    let keyword_bounds = keyword_bounds.unwrap();
 
     let candidates = extract_candidate_codes(content, &config.verification_regex);
     if candidates.is_empty() {
@@ -20,18 +20,20 @@ pub fn extract_verification_code(content: &str) -> Option<String> {
         return None;
     }
 
-    let result = find_closest_candidate(filtered_candidates, keyword_pos);
+    let result = find_closest_candidate(filtered_candidates, keyword_bounds);
 
     result
 }
 
-fn find_first_keyword_position(text: &str, keywords: &[String]) -> Option<usize> {
-    // 找到第一个关键词的位置（保留原有的小写匹配逻辑）
+fn find_first_keyword_position(text: &str, keywords: &[String]) -> Option<(usize, usize)> {
+    // 找到第一个关键词的位置，返回(开始位置，结束位置)
     let text_lower = text.to_lowercase();
     for keyword in keywords {
         let keyword_lower = keyword.to_lowercase();
         if let Some(pos) = text_lower.find(&keyword_lower) {
-            return Some(pos);
+            // 示例：[验证][码]534571
+            //      start=0, end=2
+            return Some((pos, pos + keyword.len()));
         }
     }
     None
@@ -72,18 +74,26 @@ fn filter_candidates_step1(candidates: Vec<(String, usize)>, _text: &str) -> Vec
     filtered
 }
 
-fn find_closest_candidate(candidates: Vec<(String, usize)>, keyword_pos: usize) -> Option<String> {
-    // 找到距离关键词最近的候选码，距离不超过100
+fn find_closest_candidate(candidates: Vec<(String, usize)>, keyword_bounds: (usize, usize)) -> Option<String> {
+    // 使用边界距离计算找到最近的候选码
+    let (keyword_start, keyword_end) = keyword_bounds;
     let mut closest_code: Option<String> = None;
     let mut min_distance = usize::MAX;
 
     for (code, code_pos) in candidates {
-        // 计算距离 (候选码中心到关键词位置的距离)
-        let code_center = code_pos + code.len() / 2;
-        let distance = if code_center > keyword_pos {
-            code_center - keyword_pos
+        let code_start = code_pos;
+        let code_end = code_pos + code.len();
+
+        // 根据相对位置计算边界距离
+        let distance = if code_start >= keyword_end {
+            // 验证码在关键词右侧：code_start - keyword_end
+            code_start - keyword_end
+        } else if code_end <= keyword_start {
+            // 验证码在关键词左侧：keyword_start - code_end
+            keyword_start - code_end
         } else {
-            keyword_pos - code_center
+            // 验证码与关键词有重叠，设为0
+            0
         };
 
         if distance < min_distance && distance <= 100 {
@@ -203,7 +213,11 @@ mod tests {
             (
                 "【倒三角】易支撑（登录）——您的账号W8406772本次登录验证码为666684，请勿泄露，有效时间5分钟，如非本人操作请忽略本短信。",
                 Some("666684".to_string())
-            )
+            ),
+            (
+                "您好, 请确认是您本人操作，用户15670006000登录验证码为:809198，有效期5分钟。[XXX统一门户]",
+                Some("809198".to_string())
+            ),
         ];
 
         let mut total_tests = 0;
