@@ -21,7 +21,6 @@ impl MessageProcessor {
         if let Ok(rowid) = Self::get_latest_message_rowid() {
             let mut last_processed = LAST_PROCESSED_ROWID.lock().unwrap();
             *last_processed = rowid;
-            info!("Initialized last processed ROWID to {}", rowid);
         }
 
         Self {}
@@ -91,10 +90,12 @@ impl FileProcessor for MessageProcessor {
         }
 
         let sql = format!(
-            "SELECT m.ROWID, m.text, h.id as phone_number, datetime(m.date/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as date_formatted
+            "SELECT m.ROWID, m.text, hex(m.attributedBody) as attributedBody_hex, ifnull(h.uncanonicalized_id, c.chat_identifier) as sender, datetime(m.date/1000000000 + strftime('%s', '2001-01-01'), 'unixepoch', 'localtime') as date_formatted
              FROM message m
+             LEFT JOIN chat_message_join cmj ON cmj.message_id = m.ROWID
+             LEFT JOIN chat c ON c.ROWID = cmj.chat_id
              LEFT JOIN handle h ON m.handle_id = h.ROWID
-             WHERE m.ROWID > {}
+             WHERE m.ROWID > {} AND m.is_from_me = 0
              ORDER BY m.ROWID DESC
              LIMIT 10;",
             last_rowid
@@ -225,11 +226,40 @@ fn parse_sqlite_output(output: &str) -> Vec<String> {
     for line in output.lines() {
         if !line.trim().is_empty() {
             let parts: Vec<&str> = line.split('|').collect();
-            if parts.len() >= 2 {
+            if parts.len() >= 3 {
                 let id = parts[0].trim();
                 let text = parts[1].trim();
-                debug!("New message found with ID {}: {}", id, text);
-                result.push(text.to_string());
+                let attributed_body_hex = parts[2].trim();
+
+                // 优先使用 text 字段，如果为空则尝试从 attributedBody 提取
+                let message_text = if !text.is_empty() {
+                    text.to_string()
+                } else if !attributed_body_hex.is_empty() {
+                    // 解码 hex 字符串
+                    if let Some(blob_bytes) = decode_hex(attributed_body_hex) {
+                        // 转换为 UTF-8 字符串（忽略无效字符）
+                        let blob_str = String::from_utf8_lossy(&blob_bytes);
+
+                        match extract_text_from_attributed_body(&blob_str) {
+                            Some(extracted) => {
+                                debug!("Extracted text from attributedBody for message {}: {}", id, extracted);
+                                extracted
+                            }
+                            None => {
+                                debug!("Failed to extract text from attributedBody for message {}", id);
+                                continue;
+                            }
+                        }
+                    } else {
+                        continue;
+                    }
+                } else {
+                    debug!("Message {} has no text content", id);
+                    continue;
+                };
+
+                debug!("New message found with ID {}: {}", id, message_text);
+                result.push(message_text);
             }
         }
     }
@@ -246,4 +276,77 @@ fn get_last_rowid(output: &str) -> Result<i64, Box<dyn std::error::Error + Send 
         }
     }
     Err("No valid ROWID found".into())
+}
+
+/// 将 hex 字符串解码为字节数组
+fn decode_hex(hex_str: &str) -> Option<Vec<u8>> {
+    if hex_str.is_empty() {
+        return None;
+    }
+
+    let mut bytes = Vec::new();
+    let chars: Vec<char> = hex_str.chars().collect();
+
+    for i in (0..chars.len()).step_by(2) {
+        if i + 1 < chars.len() {
+            let hex_byte = format!("{}{}", chars[i], chars[i + 1]);
+            if let Ok(byte) = u8::from_str_radix(&hex_byte, 16) {
+                bytes.push(byte);
+            } else {
+                return None;
+            }
+        }
+    }
+
+    Some(bytes)
+}
+
+/// 从 attributedBody BLOB 中提取纯文本
+/// attributedBody 包含 NSKeyedArchiver 序列化的 NSMutableAttributedString
+/// 我们通过查找可打印的 UTF-8 文本来提取内容
+fn extract_text_from_attributed_body(blob_data: &str) -> Option<String> {
+    if blob_data.is_empty() {
+        return None;
+    }
+
+    // BLOB 数据可能包含二进制字符，但文本内容以 UTF-8 编码嵌入其中
+    // 我们提取所有可打印的字符序列
+    let mut result = String::new();
+    let mut current_word = String::new();
+
+    for ch in blob_data.chars() {
+        // 检查是否为可打印字符（排除控制字符）
+        // 包括：字母、数字、空白字符、常见标点符号、中文标点
+        let is_printable = ch.is_alphanumeric()
+            || ch.is_whitespace()
+            || ch.is_ascii_punctuation()
+            || matches!(ch, '【' | '】' | '，' | '。' | '！' | '？' | '、' | '；' | '：' | '"' | '\'' | '（' | '）' | '《' | '》');
+
+        if is_printable {
+            current_word.push(ch);
+        } else {
+            // 遇到非打印字符，如果当前单词足够长，保存它
+            if current_word.len() >= 2 {
+                if !result.is_empty() {
+                    result.push(' ');
+                }
+                result.push_str(&current_word);
+            }
+            current_word.clear();
+        }
+    }
+
+    // 添加最后一个单词
+    if current_word.len() >= 2 {
+        if !result.is_empty() {
+            result.push(' ');
+        }
+        result.push_str(&current_word);
+    }
+
+    if result.is_empty() {
+        None
+    } else {
+        Some(result.trim().to_string())
+    }
 }
