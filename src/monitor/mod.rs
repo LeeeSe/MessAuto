@@ -1,5 +1,6 @@
 pub mod actor;
 pub mod commands;
+pub mod dingtalk;
 pub mod email;
 pub mod message;
 pub mod watcher;
@@ -31,6 +32,14 @@ pub fn start_monitoring_actor() -> mpsc::Sender<MonitorCommand> {
                 .await
             {
                 log::error!("{}", t!("errors.failed_to_send_initial_start_email", error = e));
+            }
+        }
+        if config.listen_dingtalk {
+            if let Err(e) = sender_clone
+                .send(MonitorCommand::StartDingTalkMonitoring)
+                .await
+            {
+                log::error!("Failed to send initial start DingTalk command: {}", e);
             }
         }
 

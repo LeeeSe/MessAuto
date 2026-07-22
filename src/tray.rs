@@ -39,6 +39,7 @@ struct MenuItems {
     launch_at_login: CheckMenuItem,
     listen_email: CheckMenuItem,
     listen_message: CheckMenuItem,
+    listen_dingtalk: CheckMenuItem,
     floating_window: CheckMenuItem,
     config: MenuItem,
     log: MenuItem,
@@ -212,6 +213,12 @@ impl TrayApplication {
                 config_guard.listen_message,
                 None,
             ),
+            listen_dingtalk: CheckMenuItem::new(
+                &t!("menu.listen_dingtalk"),
+                true,
+                config_guard.listen_dingtalk,
+                None,
+            ),
             floating_window: CheckMenuItem::new(
                 &t!("menu.floating_window"),
                 true,
@@ -237,6 +244,7 @@ impl TrayApplication {
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.listen_message)?;
         menu.append(&items_ref.listen_email)?;
+        menu.append(&items_ref.listen_dingtalk)?;
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.launch_at_login)?;
         menu.append(&items_ref.floating_window)?;
@@ -433,6 +441,33 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
                                 MonitorCommand::StartMessageMonitoring
                             } else {
                                 MonitorCommand::StopMessageMonitoring
+                            };
+                            if let Err(e) = sender.send(command).await {
+                                log::error!("Failed to send command to monitor actor: {}", e);
+                            }
+                        });
+                    } else if event.id == menu_items.listen_dingtalk.id() {
+                        config.listen_dingtalk = !config.listen_dingtalk;
+                        menu_items.listen_dingtalk.set_checked(config.listen_dingtalk);
+                        if let Err(e) = config.save() {
+                            log::error!("{}", t!("config.failed_to_save_config", error = e));
+                        }
+                        info!(
+                            "Listen DingTalk {}",
+                            if config.listen_dingtalk {
+                                "enabled"
+                            } else {
+                                "disabled"
+                            }
+                        );
+
+                        let sender = self.monitor_sender.clone();
+                        let enabled = config.listen_dingtalk;
+                        tokio::spawn(async move {
+                            let command = if enabled {
+                                MonitorCommand::StartDingTalkMonitoring
+                            } else {
+                                MonitorCommand::StopDingTalkMonitoring
                             };
                             if let Err(e) = sender.send(command).await {
                                 log::error!("Failed to send command to monitor actor: {}", e);

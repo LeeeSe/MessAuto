@@ -27,6 +27,7 @@ cargo-packager-updater = { git = "https://github.com/LeeeSe/cargo-packager.git" 
 sys-locale = "0.3.2"
 sysproxy = "0.3.0"
 fancy-regex = "0.16.1"
+plist = "1.7"
 
 [package.metadata.packager]
 product-name = "MessAuto"

@@ -1,6 +1,6 @@
 use super::{
-    commands::MonitorCommand, email::EmailProcessor, message::MessageProcessor,
-    watcher::FileWatcher,
+    commands::MonitorCommand, dingtalk::DingTalkProcessor, email::EmailProcessor,
+    message::MessageProcessor, watcher::FileWatcher,
 };
 use rust_i18n::t;
 use tokio::sync::mpsc::Receiver;
@@ -9,6 +9,7 @@ pub struct MonitorActor {
     receiver: Receiver<MonitorCommand>,
     message_watcher: Option<FileWatcher<MessageProcessor>>,
     email_watcher: Option<FileWatcher<EmailProcessor>>,
+    dingtalk_watcher: Option<FileWatcher<DingTalkProcessor>>,
 }
 
 impl MonitorActor {
@@ -17,6 +18,7 @@ impl MonitorActor {
             receiver,
             message_watcher: None,
             email_watcher: None,
+            dingtalk_watcher: None,
         }
     }
 
@@ -76,6 +78,29 @@ impl MonitorActor {
                     log::warn!("{}", t!("actor.email_monitoring_not_running"));
                 }
             }
+            MonitorCommand::StartDingTalkMonitoring => {
+                if self.dingtalk_watcher.is_some() {
+                    log::warn!("DingTalk monitoring is already running.");
+                    return;
+                }
+                log::info!("Starting DingTalk monitoring...");
+                let mut watcher = FileWatcher::new(DingTalkProcessor::new());
+                if let Err(e) = watcher.start() {
+                    log::error!("Failed to start DingTalk watcher: {}", e);
+                } else {
+                    self.dingtalk_watcher = Some(watcher);
+                    log::info!("DingTalk monitoring started successfully.");
+                }
+            }
+            MonitorCommand::StopDingTalkMonitoring => {
+                if let Some(mut watcher) = self.dingtalk_watcher.take() {
+                    log::info!("Stopping DingTalk monitoring...");
+                    watcher.stop().await;
+                    log::info!("DingTalk monitoring stopped successfully.");
+                } else {
+                    log::warn!("DingTalk monitoring is not running, nothing to stop.");
+                }
+            }
             MonitorCommand::GetStatus(responder) => {
                 let mut status = "Monitoring Status:\n".to_string();
                 status.push_str(&format!(
@@ -87,8 +112,16 @@ impl MonitorActor {
                     }
                 ));
                 status.push_str(&format!(
-                    "- Email Monitoring: {}",
+                    "- Email Monitoring: {}\n",
                     if self.email_watcher.is_some() {
+                        "Running"
+                    } else {
+                        "Stopped"
+                    }
+                ));
+                status.push_str(&format!(
+                    "- DingTalk Monitoring: {}",
+                    if self.dingtalk_watcher.is_some() {
                         "Running"
                     } else {
                         "Stopped"

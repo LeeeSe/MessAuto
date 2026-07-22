@@ -28,6 +28,8 @@ https://github.com/LeeeSe/MessAuto/assets/44465325/6e0aca37-377f-463b-b27e-a12ff
 
 🎉🎉🎉 MessAuto now supports the Mail app
 
+🎉🎉🎉 MessAuto now supports DingTalk (via macOS Notification Center)
+
 https://github.com/LeeeSe/MessAuto/assets/44465325/33dcec87-61c4-4510-a87c-ef43e69c4e9d
 
 ## Usage
@@ -45,6 +47,7 @@ Keeping these apps running in the background shortens the time it takes to sync 
 - Don't Occupy Clipboard: MessAuto simulates keyboard input to directly type the verification code without occupying the clipboard.
 - Listen for SMS: When enabled, monitors the built-in Messages app on Mac (works best when the app is running in the background; otherwise there may be a delayed response — this is not a MessAuto issue).
 - Listen for Email: When enabled, monitors the built-in Mail app on Mac (same as above).
+- Listen for DingTalk: When enabled, extracts verification codes from DingTalk banner notifications by reading the macOS Notification Center database (requires Full Disk Access, and DingTalk notifications must be turned on in System Settings -> Notifications). This does not read DingTalk's own encrypted database.
 - Hide Icon: Temporarily hides the menu bar icon. The icon will reappear when the app restarts (you can stop it via Activity Monitor).
 - Config: Quickly opens the TOML configuration file where you can customize regex patterns and keywords.
 - Log: Quickly opens the log file.

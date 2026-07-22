@@ -265,6 +265,9 @@ menu:
   listen_message:
     en: Listen Message
     zh-CN: 监听消息
+  listen_dingtalk:
+    en: Listen DingTalk
+    zh-CN: 监听钉钉
   floating_window:
     en: Floating Window
     zh-CN: 悬浮窗

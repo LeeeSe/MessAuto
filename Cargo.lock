@@ -2920,6 +2920,7 @@ dependencies = [
  "image",
  "log 0.4.26",
  "notify",
+ "plist",
  "rust-i18n",
  "serde",
  "sys-locale",

@@ -50,12 +50,18 @@ pub struct Config {
     pub launch_at_login: bool,
     pub listen_email: bool,
     pub listen_message: bool,
+    #[serde(default = "default_true")]
+    pub listen_dingtalk: bool,
     pub floating_window: bool,
     pub verification_keywords: Vec<String>,
     pub verification_regex: String,
 
     #[serde(default)]
     version: u32,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl Default for Config {
@@ -67,6 +73,7 @@ impl Default for Config {
             launch_at_login: false,
             listen_email: true,
             listen_message: true,
+            listen_dingtalk: true,
             floating_window: true,
             verification_keywords: vec![
                 "验证码".to_string(),
@@ -152,6 +159,7 @@ impl Config {
             launch_at_login: Option<bool>,
             listen_email: Option<bool>,
             listen_message: Option<bool>,
+            listen_dingtalk: Option<bool>,
             floating_window: Option<bool>,
             verification_keywords: Option<Vec<String>>,
             verification_regex: Option<String>,
@@ -165,6 +173,7 @@ impl Config {
             launch_at_login: legacy.launch_at_login.unwrap_or_default(),
             listen_email: legacy.listen_email.unwrap_or(true),
             listen_message: legacy.listen_message.unwrap_or(true),
+            listen_dingtalk: legacy.listen_dingtalk.unwrap_or(true),
             floating_window: legacy.floating_window.unwrap_or(true),
             verification_keywords: legacy.verification_keywords.unwrap_or_else(|| {
                 vec![
