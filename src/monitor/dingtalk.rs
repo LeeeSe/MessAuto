@@ -1,10 +1,10 @@
-use log::{debug, error, info, warn};
-use notify::{EventKind, RecursiveMode};
+use log::{error, info, warn};
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Mutex;
+use std::time::Duration;
+use tokio::task::JoinHandle;
 
-use super::watcher::FileProcessor;
 use crate::clipboard;
 use crate::config::Config;
 use crate::ipc;
@@ -16,168 +16,174 @@ static LAST_PROCESSED_REC_ID: Mutex<i64> = Mutex::new(0);
 // 钉钉在 macOS 通知中心数据库 app 表中的 bundle identifier（小写存储）
 const DINGTALK_BUNDLE_ID: &str = "com.alibaba.dingtalkmac";
 
-#[derive(Clone)]
-pub struct DingTalkProcessor;
+// 轮询间隔。macOS 通知中心库是高频 WAL 库，notify(FSEvents) 文件监听对它不可靠
+// （实测新通知写入不触发事件），故钉钉监听改为主动定时轮询，不依赖文件事件。
+const POLL_INTERVAL: Duration = Duration::from_secs(2);
 
-impl DingTalkProcessor {
-    pub fn new() -> Self {
-        if let Ok(rec_id) = Self::get_latest_rec_id() {
-            let mut last_processed = LAST_PROCESSED_REC_ID.lock().unwrap();
-            *last_processed = rec_id;
+/// 钉钉验证码监听器：独立 tokio 轮询任务，周期性查通知中心库。
+pub struct DingTalkPoller {
+    task: Option<JoinHandle<()>>,
+}
+
+impl DingTalkPoller {
+    pub fn start() -> Self {
+        // 以当前最大 rec_id 为增量基线，避免把历史通知当新验证码
+        if let Ok(rec_id) = get_latest_rec_id() {
+            *LAST_PROCESSED_REC_ID.lock().unwrap() = rec_id;
             info!("Initialized last processed DingTalk rec_id to {}", rec_id);
         }
 
-        Self {}
-    }
-
-    // macOS 通知中心数据库路径（钉钉横幅通知落盘于此）
-    fn notification_db_path() -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
-        let home_dir = env::var("HOME")?;
-        Ok(PathBuf::from(&home_dir)
-            .join("Library/Group Containers/group.com.apple.usernoted/db2/db"))
-    }
-
-    // 获取当前钉钉通知的最大 rec_id，作为增量基线
-    fn get_latest_rec_id() -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
-        let db_path = Self::notification_db_path()?;
-
-        let sql = format!(
-            "SELECT MAX(r.rec_id) FROM record r JOIN app a ON r.app_id = a.app_id \
-             WHERE lower(a.identifier) = '{}';",
-            DINGTALK_BUNDLE_ID
-        );
-
-        let output = std::process::Command::new("sqlite3")
-            .arg(db_path.to_str().unwrap())
-            .arg(sql)
-            .output()?;
-
-        if output.status.success() {
-            let output_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            if !output_str.is_empty() {
-                return Ok(output_str.parse()?);
+        let task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(POLL_INTERVAL);
+            loop {
+                interval.tick().await;
+                // sqlite3 查询是阻塞调用，放到 blocking 线程池，避免卡住 async executor
+                if let Err(e) = tokio::task::spawn_blocking(poll_once).await {
+                    error!("DingTalk poll task join error: {}", e);
+                }
             }
-        }
+        });
 
-        Ok(0)
+        Self { task: Some(task) }
+    }
+
+    pub async fn stop(&mut self) {
+        if let Some(task) = self.task.take() {
+            task.abort();
+            let _ = task.await;
+        }
     }
 }
 
-impl FileProcessor for DingTalkProcessor {
-    fn get_watch_path(&self) -> PathBuf {
-        let home_dir = env::var("HOME").expect("Failed to get HOME directory");
-        PathBuf::from(&home_dir).join("Library/Group Containers/group.com.apple.usernoted/db2")
-    }
-
-    // db / db-shm / db-wal 均含 "db"，任一变更都触发一次增量扫描（幂等）
-    fn get_file_pattern(&self) -> &str {
-        "db"
-    }
-
-    fn get_recursive_mode(&self) -> RecursiveMode {
-        RecursiveMode::NonRecursive
-    }
-
-    fn process_file(
-        &self,
-        path: &Path,
-        event_kind: &EventKind,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-        // 只在数据写入类事件时扫描，忽略 open/close/access
-        if !matches!(event_kind, EventKind::Modify(_) | EventKind::Create(_)) {
-            return Ok(());
+impl Drop for DingTalkPoller {
+    fn drop(&mut self) {
+        if let Some(task) = self.task.take() {
+            task.abort();
         }
+    }
+}
 
-        debug!("DingTalk notification db change detected: {:?}", path);
+// macOS 通知中心数据库路径（钉钉横幅通知落盘于此）
+fn notification_db_path() -> Result<PathBuf, Box<dyn std::error::Error + Send + Sync>> {
+    let home_dir = env::var("HOME")?;
+    Ok(PathBuf::from(&home_dir)
+        .join("Library/Group Containers/group.com.apple.usernoted/db2/db"))
+}
 
-        let db_path = Self::notification_db_path()?;
+// 获取当前钉钉通知的最大 rec_id，作为增量基线
+fn get_latest_rec_id() -> Result<i64, Box<dyn std::error::Error + Send + Sync>> {
+    let db_path = notification_db_path()?;
+    let sql = format!(
+        "SELECT MAX(r.rec_id) FROM record r JOIN app a ON r.app_id = a.app_id \
+         WHERE lower(a.identifier) = '{}';",
+        DINGTALK_BUNDLE_ID
+    );
 
-        let last_rec_id;
+    let output = std::process::Command::new("sqlite3")
+        .arg(db_path.to_str().unwrap())
+        .arg(sql)
+        .output()?;
+
+    if output.status.success() {
+        let output_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !output_str.is_empty() {
+            return Ok(output_str.parse()?);
+        }
+    }
+    Ok(0)
+}
+
+// 一次轮询：查 rec_id 大于基线的新钉钉通知，解码正文并提取验证码
+fn poll_once() {
+    let db_path = match notification_db_path() {
+        Ok(p) => p,
+        Err(e) => {
+            error!("DingTalk: failed to resolve notification db path: {}", e);
+            return;
+        }
+    };
+
+    let last_rec_id = *LAST_PROCESSED_REC_ID.lock().unwrap();
+
+    // quote(data) 输出 X'62706c...' 十六进制串，避免 blob 二进制经 CLI 文本管道损坏
+    let sql = format!(
+        "SELECT r.rec_id, quote(r.data) FROM record r JOIN app a ON r.app_id = a.app_id \
+         WHERE lower(a.identifier) = '{}' AND r.rec_id > {} \
+         ORDER BY r.rec_id ASC LIMIT 20;",
+        DINGTALK_BUNDLE_ID, last_rec_id
+    );
+
+    let output = match std::process::Command::new("sqlite3")
+        .arg(db_path.to_str().unwrap())
+        .arg(sql)
+        .output()
+    {
+        Ok(o) => o,
+        Err(e) => {
+            error!("DingTalk: failed to run sqlite3: {}", e);
+            return;
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        error!("Error querying DingTalk notifications: {}", stderr);
+        if stderr.contains("attempt to write a readonly database")
+            || stderr.contains("permission denied")
+            || stderr.contains("unable to open database")
         {
-            let last_processed = LAST_PROCESSED_REC_ID.lock().unwrap();
-            last_rec_id = *last_processed;
-        }
-
-        // quote(data) 输出 X'62706c...' 十六进制串，避免 blob 二进制经 CLI 文本管道损坏
-        let sql = format!(
-            "SELECT r.rec_id, quote(r.data) FROM record r JOIN app a ON r.app_id = a.app_id \
-             WHERE lower(a.identifier) = '{}' AND r.rec_id > {} \
-             ORDER BY r.rec_id ASC LIMIT 20;",
-            DINGTALK_BUNDLE_ID, last_rec_id
-        );
-
-        let output = std::process::Command::new("sqlite3")
-            .arg(db_path.to_str().unwrap())
-            .arg(sql)
-            .output()?;
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            error!("Error querying DingTalk notifications: {}", stderr);
-
-            if stderr.contains("attempt to write a readonly database")
-                || stderr.contains("permission denied")
-                || stderr.contains("unable to open database")
-            {
-                warn!("Permission error detected when accessing notification database");
-                if !permissions::check_full_disk_access() {
-                    permissions::show_permission_dialog();
-                }
+            warn!("Permission error detected when accessing notification database");
+            if !permissions::check_full_disk_access() {
+                permissions::show_permission_dialog();
             }
-            return Ok(());
         }
+        return;
+    }
 
-        let output_str = String::from_utf8_lossy(&output.stdout);
-        let hit = output_str.lines().filter(|l| !l.trim().is_empty()).count();
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let hit = output_str.lines().filter(|l| !l.trim().is_empty()).count();
+    if hit > 0 {
         info!(
-            "[dingtalk-diag] 通知库变化 → 查询 rec_id>{}，当前表内钉钉记录 {} 条",
+            "[dingtalk-diag] 轮询 rec_id>{}，新钉钉记录 {} 条",
             last_rec_id, hit
         );
-        let mut max_rec_id = last_rec_id;
+    }
 
-        for line in output_str.lines() {
-            let line = line.trim();
-            if line.is_empty() {
-                continue;
-            }
+    let mut max_rec_id = last_rec_id;
 
-            // 每行： rec_id|X'hex...'
-            let (rec_id_str, quoted) = match line.split_once('|') {
-                Some(v) => v,
-                None => continue,
-            };
+    for line in output_str.lines() {
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
 
-            if let Ok(rec_id) = rec_id_str.trim().parse::<i64>() {
-                if rec_id > max_rec_id {
-                    max_rec_id = rec_id;
-                }
-            }
+        // 每行： rec_id|X'hex...'
+        let (rec_id_str, quoted) = match line.split_once('|') {
+            Some(v) => v,
+            None => continue,
+        };
 
-            let content = match decode_notification_body(quoted.trim()) {
-                Some(c) => c,
-                None => {
-                    debug!("Failed to decode DingTalk notification blob for rec_id {}", rec_id_str);
-                    continue;
-                }
-            };
-
-            info!("[dingtalk-diag] rec_id={} 正文: {}", rec_id_str, content);
-
-            if let Some(code) = parser::extract_verification_code(&content) {
-                info!("Found verification code in DingTalk notification: {}", code);
-                handle_code(&code);
-            } else {
-                debug!("No verification code found in DingTalk notification");
+        if let Ok(rec_id) = rec_id_str.trim().parse::<i64>() {
+            if rec_id > max_rec_id {
+                max_rec_id = rec_id;
             }
         }
 
-        if max_rec_id > last_rec_id {
-            let mut last_processed = LAST_PROCESSED_REC_ID.lock().unwrap();
-            *last_processed = max_rec_id;
-            debug!("Updated last processed DingTalk rec_id to {}", max_rec_id);
-        }
+        let content = match decode_notification_body(quoted.trim()) {
+            Some(c) => c,
+            None => continue,
+        };
 
-        Ok(())
+        info!("[dingtalk-diag] rec_id={} 正文: {}", rec_id_str, content);
+
+        if let Some(code) = parser::extract_verification_code(&content) {
+            info!("Found verification code in DingTalk notification: {}", code);
+            handle_code(&code);
+        }
+    }
+
+    if max_rec_id > last_rec_id {
+        *LAST_PROCESSED_REC_ID.lock().unwrap() = max_rec_id;
     }
 }
 
@@ -205,28 +211,6 @@ fn decode_notification_body(quoted: &str) -> Option<String> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_hex_decode_roundtrip() {
-        assert_eq!(hex_decode("62706c").unwrap(), vec![0x62, 0x70, 0x6c]);
-        assert!(hex_decode("6").is_none()); // 奇数长度
-    }
-
-    // 解析一条真实钉钉通知 blob（可选：设 DING_BLOB_HEX 环境变量传入 quote(data) 的 hex）
-    #[test]
-    fn test_decode_real_notification_from_env() {
-        if let Ok(hex) = std::env::var("DING_BLOB_HEX") {
-            let quoted = format!("X'{}'", hex);
-            let body = decode_notification_body(&quoted);
-            println!("decoded body = {:?}", body);
-            assert!(body.is_some(), "应能从真实钉钉通知 blob 解出文本");
-        }
-    }
-}
-
 fn hex_decode(s: &str) -> Option<Vec<u8>> {
     if s.len() % 2 != 0 {
         return None;
@@ -249,7 +233,7 @@ fn handle_code(code: &str) {
 
     if config.floating_window {
         match ipc::spawn_floating_window(code, "DingTalk") {
-            Ok(_) => debug!("Floating window spawned successfully"),
+            Ok(_) => {}
             Err(e) => error!("Failed to spawn floating window: {}", e),
         }
         return;
@@ -263,8 +247,6 @@ fn handle_code(code: &str) {
             if config.auto_enter {
                 if let Err(e) = clipboard::press_enter() {
                     error!("Failed to press enter key: {}", e);
-                } else {
-                    info!("Auto-pressed enter key");
                 }
             }
         }
@@ -289,8 +271,28 @@ fn handle_code(code: &str) {
     if config.auto_enter {
         if let Err(e) = clipboard::press_enter() {
             error!("Failed to press enter key: {}", e);
-        } else {
-            info!("Auto-pressed enter key");
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hex_decode_roundtrip() {
+        assert_eq!(hex_decode("62706c").unwrap(), vec![0x62, 0x70, 0x6c]);
+        assert!(hex_decode("6").is_none()); // 奇数长度
+    }
+
+    // 解析一条真实钉钉通知 blob（可选：设 DING_BLOB_HEX 环境变量传入 quote(data) 的 hex）
+    #[test]
+    fn test_decode_real_notification_from_env() {
+        if let Ok(hex) = std::env::var("DING_BLOB_HEX") {
+            let quoted = format!("X'{}'", hex);
+            let body = decode_notification_body(&quoted);
+            println!("decoded body = {:?}", body);
+            assert!(body.is_some(), "应能从真实钉钉通知 blob 解出文本");
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{
-    commands::MonitorCommand, dingtalk::DingTalkProcessor, email::EmailProcessor,
+    commands::MonitorCommand, dingtalk::DingTalkPoller, email::EmailProcessor,
     message::MessageProcessor, watcher::FileWatcher,
 };
 use rust_i18n::t;
@@ -9,7 +9,7 @@ pub struct MonitorActor {
     receiver: Receiver<MonitorCommand>,
     message_watcher: Option<FileWatcher<MessageProcessor>>,
     email_watcher: Option<FileWatcher<EmailProcessor>>,
-    dingtalk_watcher: Option<FileWatcher<DingTalkProcessor>>,
+    dingtalk_watcher: Option<DingTalkPoller>,
 }
 
 impl MonitorActor {
@@ -83,14 +83,10 @@ impl MonitorActor {
                     log::warn!("DingTalk monitoring is already running.");
                     return;
                 }
-                log::info!("Starting DingTalk monitoring...");
-                let mut watcher = FileWatcher::new(DingTalkProcessor::new());
-                if let Err(e) = watcher.start() {
-                    log::error!("Failed to start DingTalk watcher: {}", e);
-                } else {
-                    self.dingtalk_watcher = Some(watcher);
-                    log::info!("DingTalk monitoring started successfully.");
-                }
+                log::info!("Starting DingTalk monitoring (polling mode)...");
+                let poller = DingTalkPoller::start();
+                self.dingtalk_watcher = Some(poller);
+                log::info!("DingTalk monitoring started successfully.");
             }
             MonitorCommand::StopDingTalkMonitoring => {
                 if let Some(mut watcher) = self.dingtalk_watcher.take() {
