@@ -128,6 +128,11 @@ impl FileProcessor for DingTalkProcessor {
         }
 
         let output_str = String::from_utf8_lossy(&output.stdout);
+        let hit = output_str.lines().filter(|l| !l.trim().is_empty()).count();
+        info!(
+            "[dingtalk-diag] 通知库变化 → 查询 rec_id>{}，当前表内钉钉记录 {} 条",
+            last_rec_id, hit
+        );
         let mut max_rec_id = last_rec_id;
 
         for line in output_str.lines() {
@@ -156,7 +161,7 @@ impl FileProcessor for DingTalkProcessor {
                 }
             };
 
-            debug!("DingTalk notification content: {}", content);
+            info!("[dingtalk-diag] rec_id={} 正文: {}", rec_id_str, content);
 
             if let Some(code) = parser::extract_verification_code(&content) {
                 info!("Found verification code in DingTalk notification: {}", code);
