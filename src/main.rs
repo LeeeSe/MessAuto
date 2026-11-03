@@ -1,3 +1,4 @@
+mod action;
 mod clipboard;
 mod config;
 mod floating_window;
@@ -8,6 +9,7 @@ mod monitor;
 mod notification;
 mod parser;
 mod permissions;
+mod status;
 mod tray;
 mod updater;
 
@@ -60,6 +62,27 @@ fn main() {
         return;
     }
 
+    {
+        let mut config = app_config.lock().unwrap();
+        let generated = match config.ensure_webhook_token() {
+            Ok(generated) => generated,
+            Err(error) => {
+                log::error!("Failed to generate Webhook token: {}", error);
+                return;
+            }
+        };
+        let imported = config.import_ngrok_authtoken();
+        if generated || imported {
+            if let Err(error) = config.save() {
+                log::error!("Failed to save Webhook configuration: {}", error);
+                return;
+            }
+        }
+        if generated {
+            notification::notify("MessAuto", &t!("webhook.token_generated"));
+        }
+    }
+
     info!("{}", t!("monitor.starting_auto_update_checker"));
     updater::start_auto_update_checker();
 
@@ -106,7 +129,7 @@ fn main() {
         info!("{}", t!("tray.about_to_run_tray_application"));
 
         let _guard = rt.enter();
-        let monitor_sender = monitor::start_monitoring_actor();
+        let monitor_sender = monitor::start_monitoring_actor(app_config.clone());
 
         tray::run_tray_application(
             quit_requested,

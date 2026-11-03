@@ -104,6 +104,10 @@ mod tests {
     fn test_extract_verification_code_comprehensive_accuracy() {
         let test_cases = vec![
             (
+                "10692049800046562\n【知乎】你的验证码是 131964，此验证码用于登录知乎。10 分钟内有效。\n\nSubId：1\n2026-11-02 18:51:14",
+                Some("131964".to_string()),
+            ),
+            (
                 "【自如网】自如验证码 356407，有效时间为一分钟，请勿将验证码告知任何人！如非您本人操作，请及时致电4001001111",
                 Some("356407".to_string()),
             ),

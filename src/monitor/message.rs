@@ -5,9 +5,6 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use super::watcher::FileProcessor;
-use crate::clipboard;
-use crate::config::Config;
-use crate::ipc;
 use crate::parser;
 use crate::permissions;
 
@@ -120,68 +117,7 @@ impl FileProcessor for MessageProcessor {
                 if let Some(code) = parser::extract_verification_code(message) {
                     info!("Found verification code in message: {}", code);
 
-                    let config = Config::load().unwrap_or_default();
-
-                    // 如果悬浮窗启用，只显示悬浮窗，不自动输入
-                    if config.floating_window {
-                        match ipc::spawn_floating_window(&code, "iMessage") {
-                            Ok(_) => debug!("Floating window spawned successfully"),
-                            Err(e) => error!("Failed to spawn floating window: {}", e),
-                        }
-                    } else {
-                        // 悬浮窗关闭时，根据配置自动处理
-                        if config.direct_input {
-                            // 直接输入模式，不占用剪贴板
-                            if let Err(e) = clipboard::auto_paste(true, &code) {
-                                error!("Failed to direct input verification code: {}", e);
-                            } else {
-                                info!("Direct input verification code: {}", code);
-
-                                // 如果 auto_enter 启用，在直接输入后立即按下回车键
-                                if config.auto_enter {
-                                    if let Err(e) = clipboard::press_enter() {
-                                        error!("Failed to press enter key: {}", e);
-                                    } else {
-                                        info!("Auto-pressed enter key");
-                                    }
-                                }
-                            }
-                        } else {
-                            // 剪贴板模式（默认行为）
-                            if let Err(e) = clipboard::copy_to_clipboard(&code) {
-                                error!("Failed to copy verification code to clipboard: {}", e);
-                            } else {
-                                info!("Auto-copied verification code to clipboard: {}", code);
-
-                                // 如果 auto_paste 启用，自动粘贴
-                                if config.auto_paste {
-                                    if let Err(e) = clipboard::auto_paste(false, &code) {
-                                        error!("Failed to auto-paste verification code: {}", e);
-                                    } else {
-                                        info!("Auto-pasted verification code: {}", code);
-
-                                        // 如果 auto_enter 启用，在自动粘贴后立即按下回车键
-                                        if config.auto_enter {
-                                            if let Err(e) = clipboard::press_enter() {
-                                                error!("Failed to press enter key: {}", e);
-                                            } else {
-                                                info!("Auto-pressed enter key");
-                                            }
-                                        }
-                                    }
-                                } else {
-                                    // 如果 auto_paste 未启用但 auto_enter 启用，在复制后立即按下回车键
-                                    if config.auto_enter {
-                                        if let Err(e) = clipboard::press_enter() {
-                                            error!("Failed to press enter key: {}", e);
-                                        } else {
-                                            info!("Auto-pressed enter key");
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    crate::action::handle_verification_code(&code, "iMessage");
                 } else {
                     debug!("No verification code found in message");
                 }

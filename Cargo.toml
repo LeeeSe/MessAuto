@@ -23,10 +23,16 @@ chrono = "0.4.41"
 email = "0.0.21"
 rust-i18n = "3.1.5"
 auto-launch = "0.5.0"
-cargo-packager-updater = { git = "https://github.com/LeeeSe/cargo-packager.git" }
+cargo-packager-updater = "=0.2.3"
 sys-locale = "0.3.2"
-sysproxy = "0.3.0"
 fancy-regex = "0.16.1"
+axum = "0.8"
+ngrok = "0.14"
+url = "2"
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"
 
 [package.metadata.packager]
 product-name = "MessAuto"
