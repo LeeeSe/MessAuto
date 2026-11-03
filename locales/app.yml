@@ -283,6 +283,37 @@ menu:
   check_update:
     en: Check Update
     zh-CN: 检查更新
+  webhook:
+    title:
+      en: "Webhook"
+      zh-CN: "Webhook"
+    enable:
+      en: "Enable Webhook"
+      zh-CN: "启用 Webhook"
+    ngrok_enable:
+      en: "Enable ngrok public tunnel"
+      zh-CN: "启用 ngrok 公网隧道"
+    local_status:
+      en: "Local: %{status}"
+      zh-CN: "本地：%{status}"
+    public_status:
+      en: "Public: %{status}"
+      zh-CN: "公网：%{status}"
+    copy_public:
+      en: "Copy public Webhook URL"
+      zh-CN: "复制公网 Webhook 地址"
+    copy_local:
+      en: "Copy LAN Webhook URL"
+      zh-CN: "复制局域网 Webhook 地址"
+    copy_token:
+      en: "Copy Token"
+      zh-CN: "复制 Token"
+    regenerate_token:
+      en: "Regenerate Token"
+      zh-CN: "重新生成 Token"
+    set_ngrok_token:
+      en: "Set ngrok Token…"
+      zh-CN: "设置 ngrok Token…"
 launch_manager:
   enabled_launch_at_login:
     en: Launch at login enabled
@@ -401,3 +432,58 @@ dialog:
   permission_request_button_later:
     en: Later
     zh-CN: 稍后
+
+webhook:
+  token_generated:
+    en: "Webhook Token generated. Copy it from the Webhook menu."
+    zh-CN: "Webhook Token 已生成，可从 Webhook 菜单复制。"
+  copied:
+    en: "Copied"
+    zh-CN: "已复制"
+  regenerate_confirm:
+    en: "Regenerate the Webhook Token? Existing forwarding URLs will stop working."
+    zh-CN: "重新生成 Webhook Token？现有转发地址将失效。"
+  confirm:
+    en: "Regenerate"
+    zh-CN: "重新生成"
+  cancel:
+    en: "Cancel"
+    zh-CN: "取消"
+  running:
+    en: "Running"
+    zh-CN: "运行中"
+  stopped:
+    en: "Stopped"
+    zh-CN: "已停止"
+  failed:
+    en: "Failed: %{error}"
+    zh-CN: "失败：%{error}"
+  start_failed:
+    en: "Failed to start Webhook: %{error}"
+    zh-CN: "Webhook 启动失败：%{error}"
+  no_lan_ip:
+    en: "No LAN address found on en0 or en1."
+    zh-CN: "未找到 en0 或 en1 的局域网地址。"
+
+ngrok:
+  need_domain:
+    en: "Set ngrok_domain to your account's dev domain in config.toml, then toggle ngrok off/on."
+    zh-CN: "请在 config.toml 中将 ngrok_domain 填为账号的 dev 域名，再关闭并开启 ngrok。"
+  disabled:
+    en: "Disabled"
+    zh-CN: "已关闭"
+  need_token:
+    en: "Token not set or invalid"
+    zh-CN: "未设置 Token 或 Token 无效"
+  connecting:
+    en: "Connecting…"
+    zh-CN: "连接中…"
+  invalid_token:
+    en: "Invalid ngrok Token. Please set it again."
+    zh-CN: "ngrok Token 无效，请重新设置。"
+  domain_in_use:
+    en: "The ngrok domain is in use by another ngrok process. Exit ngrok CLI first."
+    zh-CN: "ngrok 域名正在被其他 ngrok 进程使用，请先退出 ngrok CLI。"
+  token_prompt:
+    en: "Enter your ngrok authtoken (stored as plain text in config.toml):"
+    zh-CN: "请输入 ngrok authtoken（将明文保存在 config.toml）："

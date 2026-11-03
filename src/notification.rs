@@ -10,7 +10,10 @@ fn get_icon_script_part() -> String {
                 path.push("Contents/Resources/Messauto.icns");
 
                 if path.exists() {
-                    return format!(r#"with icon (POSIX file "{}")"#, path.to_string_lossy());
+                    return format!(
+                        r#"with icon (POSIX file "{}")"#,
+                        escape_applescript(&path.to_string_lossy())
+                    );
                 }
             }
         }
@@ -26,10 +29,10 @@ pub fn dialog(title: &str, content: &str, true_button: &str, false_button: &str)
 
     let script = format!(
         r#"display dialog "{content}" with title "{title}" {icon_part} buttons {{"{false_button}", "{true_button}"}} default button "{true_button}" cancel button "{false_button}""#,
-        title = title,
-        content = content,
-        true_button = true_button,
-        false_button = false_button,
+        title = escape_applescript(title),
+        content = escape_applescript(content),
+        true_button = escape_applescript(true_button),
+        false_button = escape_applescript(false_button),
         icon_part = icon_part
     );
 
@@ -47,4 +50,38 @@ pub fn dialog(title: &str, content: &str, true_button: &str, false_button: &str)
     } else {
         false
     }
+}
+
+fn escape_applescript(value: &str) -> String {
+    value.replace('\\', "\\\\").replace('"', "\\\"")
+}
+
+/// 显示系统通知横幅。
+pub fn notify(title: &str, body: &str) {
+    let script = format!(
+        "display notification \"{}\" with title \"{}\"",
+        escape_applescript(body),
+        escape_applescript(title)
+    );
+    if let Err(error) = Command::new("osascript").args(["-e", &script]).output() {
+        log::error!("Failed to display notification: {}", error);
+    }
+}
+
+/// 显示输入框，用户取消时返回 None。
+pub fn input_dialog(title: &str, prompt: &str, hidden: bool) -> Option<String> {
+    let script = format!(
+        "text returned of (display dialog \"{}\" with title \"{}\" default answer \"\"{})",
+        escape_applescript(prompt),
+        escape_applescript(title),
+        if hidden { " with hidden answer" } else { "" }
+    );
+    let output = Command::new("osascript")
+        .args(["-e", &script])
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).trim().to_string())
 }

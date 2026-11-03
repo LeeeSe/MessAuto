@@ -1,7 +1,11 @@
 use crate::config::Config;
 use crate::launch::LaunchManager;
 use crate::monitor::commands::MonitorCommand;
-use crate::updater;
+use crate::{
+    clipboard, notification,
+    status::{self, ServiceState, TunnelState},
+    updater,
+};
 use log::{info, trace};
 use rust_i18n::t;
 use std::env;
@@ -11,7 +15,7 @@ use tokio::sync::mpsc::Sender;
 
 use tray_icon::{
     TrayIcon, TrayIconBuilder, TrayIconEvent,
-    menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem},
+    menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu},
 };
 use winit::{application::ApplicationHandler, event_loop::EventLoop};
 
@@ -19,6 +23,7 @@ use winit::{application::ApplicationHandler, event_loop::EventLoop};
 pub enum UserEvent {
     TrayIconEvent(tray_icon::TrayIconEvent),
     MenuEvent(tray_icon::menu::MenuEvent),
+    StatusChanged,
 }
 
 pub struct TrayApplication {
@@ -45,6 +50,16 @@ struct MenuItems {
     check_update: MenuItem,
     hide_tray: MenuItem,
     exit: MenuItem,
+    webhook: Submenu,
+    listen_webhook: CheckMenuItem,
+    ngrok_enabled: CheckMenuItem,
+    local_status: MenuItem,
+    public_status: MenuItem,
+    copy_public: MenuItem,
+    copy_local: MenuItem,
+    copy_token: MenuItem,
+    regenerate_token: MenuItem,
+    set_ngrok_token: MenuItem,
 }
 
 impl TrayApplication {
@@ -223,6 +238,26 @@ impl TrayApplication {
             check_update: MenuItem::new(&t!("menu.check_update"), true, None),
             hide_tray: MenuItem::new(&t!("menu.hide_tray"), true, None),
             exit: MenuItem::new(&t!("menu.exit"), true, None),
+            webhook: Submenu::new(&t!("menu.webhook.title"), true),
+            listen_webhook: CheckMenuItem::new(
+                &t!("menu.webhook.enable"),
+                true,
+                config_guard.listen_webhook,
+                None,
+            ),
+            ngrok_enabled: CheckMenuItem::new(
+                &t!("menu.webhook.ngrok_enable"),
+                true,
+                config_guard.ngrok_enabled,
+                None,
+            ),
+            local_status: MenuItem::new("", false, None),
+            public_status: MenuItem::new("", false, None),
+            copy_public: MenuItem::new(&t!("menu.webhook.copy_public"), false, None),
+            copy_local: MenuItem::new(&t!("menu.webhook.copy_local"), false, None),
+            copy_token: MenuItem::new(&t!("menu.webhook.copy_token"), true, None),
+            regenerate_token: MenuItem::new(&t!("menu.webhook.regenerate_token"), true, None),
+            set_ngrok_token: MenuItem::new(&t!("menu.webhook.set_ngrok_token"), true, None),
         };
 
         self.menu_items = Some(menu_items);
@@ -237,6 +272,21 @@ impl TrayApplication {
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.listen_message)?;
         menu.append(&items_ref.listen_email)?;
+        items_ref.webhook.append_items(&[
+            &items_ref.listen_webhook,
+            &items_ref.ngrok_enabled,
+            &PredefinedMenuItem::separator(),
+            &items_ref.local_status,
+            &items_ref.public_status,
+            &PredefinedMenuItem::separator(),
+            &items_ref.copy_public,
+            &items_ref.copy_local,
+            &items_ref.copy_token,
+            &items_ref.regenerate_token,
+            &items_ref.set_ngrok_token,
+        ])?;
+        menu.append(&items_ref.webhook)?;
+        self.refresh_webhook_menu();
         menu.append(&PredefinedMenuItem::separator())?;
         menu.append(&items_ref.launch_at_login)?;
         menu.append(&items_ref.floating_window)?;
@@ -249,6 +299,151 @@ impl TrayApplication {
         menu.append(&items_ref.exit)?;
 
         Ok(menu)
+    }
+
+    fn refresh_webhook_menu(&self) {
+        let Some(items) = &self.menu_items else {
+            return;
+        };
+        let runtime = status::snapshot();
+        let local = match &runtime.webhook {
+            ServiceState::Stopped => t!("webhook.stopped").to_string(),
+            ServiceState::Running { addr } => format!("{} · {}", addr, t!("webhook.running")),
+            ServiceState::Failed(error) => t!("webhook.failed", error = error).to_string(),
+        };
+        let public = match &runtime.ngrok {
+            TunnelState::Disabled => t!("ngrok.disabled").to_string(),
+            TunnelState::NeedToken => t!("ngrok.need_token").to_string(),
+            TunnelState::NeedDomain => t!("ngrok.need_domain").to_string(),
+            TunnelState::Connecting => t!("ngrok.connecting").to_string(),
+            TunnelState::Online { url } => url.clone(),
+            TunnelState::Failed(error) => t!("webhook.failed", error = error).to_string(),
+        };
+        items
+            .local_status
+            .set_text(t!("menu.webhook.local_status", status = local));
+        items
+            .public_status
+            .set_text(t!("menu.webhook.public_status", status = public));
+        items
+            .copy_local
+            .set_enabled(matches!(runtime.webhook, ServiceState::Running { .. }));
+        items
+            .copy_public
+            .set_enabled(matches!(runtime.ngrok, TunnelState::Online { .. }));
+    }
+
+    fn send_monitor_command(&self, command: MonitorCommand) {
+        let sender = self.monitor_sender.clone();
+        tokio::spawn(async move {
+            if let Err(error) = sender.send(command).await {
+                log::error!("Failed to send monitor command: {}", error);
+            }
+        });
+    }
+
+    fn copy_webhook_text(&self, text: &str) {
+        match clipboard::copy_to_clipboard(text) {
+            Ok(()) => notification::notify("MessAuto", &t!("webhook.copied")),
+            Err(error) => notification::notify("MessAuto", &error),
+        }
+    }
+
+    fn handle_webhook_menu(&self, id: &tray_icon::menu::MenuId) -> bool {
+        let Some(items) = &self.menu_items else {
+            return false;
+        };
+        if ![
+            items.listen_webhook.id(),
+            items.ngrok_enabled.id(),
+            items.regenerate_token.id(),
+            items.set_ngrok_token.id(),
+            items.copy_token.id(),
+            items.copy_public.id(),
+            items.copy_local.id(),
+        ]
+        .contains(&id)
+        {
+            return false;
+        }
+        let mut config = self.config.lock().unwrap();
+        // 保留用户在 config.toml 中修改的域名，再保存菜单开关。
+        if let Ok(latest) = Config::load() {
+            *config = latest;
+        }
+        let command = if id == items.listen_webhook.id() {
+            config.listen_webhook = !config.listen_webhook;
+            items.listen_webhook.set_checked(config.listen_webhook);
+            Some(if config.listen_webhook {
+                MonitorCommand::StartWebhook
+            } else {
+                MonitorCommand::StopWebhook
+            })
+        } else if id == items.ngrok_enabled.id() {
+            config.ngrok_enabled = !config.ngrok_enabled;
+            items.ngrok_enabled.set_checked(config.ngrok_enabled);
+            Some(if config.ngrok_enabled {
+                MonitorCommand::StartNgrok
+            } else {
+                MonitorCommand::StopNgrok
+            })
+        } else if id == items.regenerate_token.id() {
+            if !notification::dialog(
+                "MessAuto",
+                &t!("webhook.regenerate_confirm"),
+                &t!("webhook.confirm"),
+                &t!("webhook.cancel"),
+            ) {
+                return true;
+            }
+            match crate::config::generate_token() {
+                Ok(token) => config.webhook_token = token,
+                Err(error) => {
+                    notification::notify("MessAuto", &error.to_string());
+                    return true;
+                }
+            }
+            Some(MonitorCommand::RestartWebhook)
+        } else if id == items.set_ngrok_token.id() {
+            let Some(token) = notification::input_dialog("ngrok", &t!("ngrok.token_prompt"), true)
+            else {
+                return true;
+            };
+            config.ngrok_authtoken = token;
+            Some(MonitorCommand::RestartNgrok)
+        } else if id == items.copy_token.id() {
+            self.copy_webhook_text(&config.webhook_token);
+            return true;
+        } else if id == items.copy_public.id() {
+            if let TunnelState::Online { url } = status::snapshot().ngrok {
+                self.copy_webhook_text(&webhook_url(&url, &config.webhook_token));
+            }
+            return true;
+        } else if id == items.copy_local.id() {
+            if let ServiceState::Running { addr } = status::snapshot().webhook {
+                if let Some(ip) = lan_ip() {
+                    let port = addr.parse::<std::net::SocketAddr>().unwrap().port();
+                    self.copy_webhook_text(&webhook_url(
+                        &format!("http://{ip}:{port}"),
+                        &config.webhook_token,
+                    ));
+                } else {
+                    notification::notify("MessAuto", &t!("webhook.no_lan_ip"));
+                }
+            }
+            return true;
+        } else {
+            return false;
+        };
+        match config.save() {
+            Ok(()) => {
+                if let Some(command) = command {
+                    self.send_monitor_command(command);
+                }
+            }
+            Err(error) => notification::notify("MessAuto", &error.to_string()),
+        }
+        true
     }
 
     fn apply_menu_logic(&self, menu_items: &MenuItems, config: &Config) {
@@ -312,10 +507,14 @@ impl ApplicationHandler<UserEvent> for TrayApplication {
 
     fn user_event(&mut self, event_loop: &winit::event_loop::ActiveEventLoop, event: UserEvent) {
         match event {
+            UserEvent::StatusChanged => self.refresh_webhook_menu(),
             UserEvent::TrayIconEvent(_event) => {
                 // debug!("Tray event: {:?}", event);
             }
             UserEvent::MenuEvent(event) => {
+                if self.handle_webhook_menu(&event.id) {
+                    return;
+                }
                 if let Some(menu_items) = &self.menu_items {
                     let mut config = self.config.lock().unwrap();
 
@@ -523,6 +722,7 @@ pub fn run_tray_application(
 ) {
     let event_loop = EventLoop::<UserEvent>::with_user_event().build().unwrap();
 
+    status::set_notifier(event_loop.create_proxy());
     let proxy = event_loop.create_proxy();
     TrayIconEvent::set_event_handler(Some(move |event| {
         let _ = proxy.send_event(UserEvent::TrayIconEvent(event));
@@ -538,4 +738,27 @@ pub fn run_tray_application(
     if let Err(err) = event_loop.run_app(&mut app) {
         eprintln!("Error in event loop: {:?}", err);
     }
+}
+
+fn webhook_url(base: &str, token: &str) -> String {
+    let mut url = url::Url::parse(base).unwrap();
+    url.set_path("/webhook");
+    url.query_pairs_mut().append_pair("token", token);
+    url.to_string()
+}
+
+fn lan_ip() -> Option<String> {
+    for interface in ["en0", "en1"] {
+        let output = std::process::Command::new("ipconfig")
+            .args(["getifaddr", interface])
+            .output()
+            .ok()?;
+        if output.status.success() {
+            let ip = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !ip.is_empty() {
+                return Some(ip);
+            }
+        }
+    }
+    None
 }

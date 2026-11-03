@@ -1,6 +1,6 @@
 use email::MimeMessage;
 use log::warn;
-use log::{debug, error, info};
+use log::{debug, info};
 use notify::{EventKind, RecursiveMode};
 use rust_i18n::t;
 use std::env;
@@ -9,9 +9,6 @@ use std::io::Read;
 use std::path::{Path, PathBuf};
 
 use super::watcher::FileProcessor;
-use crate::clipboard;
-use crate::config::Config;
-use crate::ipc;
 use crate::parser;
 
 rust_i18n::i18n!("../locales");
@@ -192,69 +189,7 @@ impl FileProcessor for EmailProcessor {
             );
             info!("{}", t!("monitor.mail_content", content = &content));
 
-            let config = Config::load().unwrap_or_default();
-
-            if config.floating_window {
-                match ipc::spawn_floating_window(&code, "Mail") {
-                    Ok(_) => debug!("Floating window spawned successfully"),
-                    Err(e) => error!("Failed to spawn floating window: {}", e),
-                }
-            } else {
-                if config.direct_input {
-                    if let Err(e) = clipboard::auto_paste(true, &code) {
-                        error!("{}", t!("monitor.failed_to_direct_input", error = e));
-                    } else {
-                        info!(
-                            "{}",
-                            t!("monitor.direct_input_verification_code", code = code)
-                        );
-
-                        if config.auto_enter {
-                            if let Err(e) = clipboard::press_enter() {
-                                error!("{}", t!("monitor.failed_to_press_enter", error = e));
-                            } else {
-                                info!("{}", t!("monitor.auto_pressed_enter"));
-                            }
-                        }
-                    }
-                } else {
-                    if let Err(e) = clipboard::copy_to_clipboard(&code) {
-                        error!("{}", t!("monitor.failed_to_copy_to_clipboard", error = e));
-                    } else {
-                        info!("{}", t!("monitor.auto_copied_to_clipboard", code = code));
-
-                        if config.auto_paste {
-                            if let Err(e) = clipboard::auto_paste(false, &code) {
-                                error!("{}", t!("monitor.failed_to_auto_paste", error = e));
-                            } else {
-                                info!(
-                                    "{}",
-                                    t!("monitor.auto_pasted_verification_code", code = code)
-                                );
-
-                                if config.auto_enter {
-                                    if let Err(e) = clipboard::press_enter() {
-                                        error!(
-                                            "{}",
-                                            t!("monitor.failed_to_press_enter", error = e)
-                                        );
-                                    } else {
-                                        info!("{}", t!("monitor.auto_pressed_enter"));
-                                    }
-                                }
-                            }
-                        } else {
-                            if config.auto_enter {
-                                if let Err(e) = clipboard::press_enter() {
-                                    error!("{}", t!("monitor.failed_to_press_enter", error = e));
-                                } else {
-                                    info!("{}", t!("monitor.auto_pressed_enter"));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            crate::action::handle_verification_code(&code, "Mail");
         } else {
             debug!("{}", t!("monitor.no_verification_code_email"));
         }
